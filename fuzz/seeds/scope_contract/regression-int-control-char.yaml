@@ -1,0 +1,21 @@
+apiVersion: security-agent/v1
+kind: EngagementScope
+authorization:
+  owner: "a@example.com"
+  authorized_by: "b@example.com"
+  ticket: "T-1"
+  attestation: "authorized"
+  expires: "2099-01-01T00:00:00Z"
+scope:
+  in_scope:
+    - host: "app.example.com"
+      ports: [443]
+      paths_include: ["/api/*", "/v2/**"]
+      methods: ["GET"]
+  out_of_scope:
+    paths_exclude: ["/api/admin/**"]
+    hosts_exclude: ["*.internal.example.com"]
+  resolved_ip_allowlist: ["10.0.0.0/8", "::1/128"]
+test_accounts: []
+limits:
+  max_total_requests: 5000

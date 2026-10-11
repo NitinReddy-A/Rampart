@@ -216,7 +216,12 @@ def _int(v, name: str, lo: int | None = None, hi: int | None = None) -> int:
     if isinstance(v, bool):
         raise ScopeError(f"{name} must be an integer, got a boolean")
     if isinstance(v, str) and re.fullmatch(r"\s*[0-9]+\s*", v):
-        v = int(v)
+        # Still guarded: int() rejects some of what \s accepts (\x1c-\x1f) and digit strings
+        # past the interpreter's int-conversion limit, and that must be a ScopeError too.
+        try:
+            v = int(v)
+        except ValueError:
+            raise ScopeError(f"{name} must be an integer, got {v!r}") from None
     if isinstance(v, float) and v.is_integer():
         v = int(v)
     if not isinstance(v, int):

@@ -54,6 +54,11 @@ All notable changes to Rampart are documented here. The format follows
   climb out of the repo root, with the exact URL kept as a logical location and a stable
   `primaryLocationLineHash` so alerts track across scans. Verified against GitHub's SARIF
   processor; the test that asserted the old behaviour now asserts code scanning's constraints.
+- **Scope contract: an integer field with a control character now refuses cleanly.** Found by the
+  new fuzzer on its first CI run: `\s` in the integer guard accepts `\x1c`–`\x1f` but `int()`
+  doesn't, so e.g. `max_total_requests: 5000\x1f` escaped as a bare `ValueError` — a traceback
+  from the CLI and MCP server instead of the fail-closed `ScopeError` refusal (nothing ran either
+  way). The input is now part of the fuzz seed corpus.
 - **Content-proof oracles for CMDI, SSRF, path traversal, and BFLA** — they now prove the flaw from
   real response content instead of a marker the bundled demo emits, removing both false positives
   (a reflecting endpoint wrongly confirmed) and false negatives (a real app missed for lacking the

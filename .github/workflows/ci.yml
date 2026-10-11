@@ -87,16 +87,25 @@ jobs:
           python -m pip install --require-hashes -r requirements/build.txt
           python -m pip install --no-deps --no-build-isolation -e .
       - name: Fuzz
+        # The seeds include past finds, so each run re-checks them first.
         run: |
+          mkdir -p "$RUNNER_TEMP/fuzz-crashes"
           for target in fuzz/fuzz_*.py; do
             name="$(basename "$target" .py)"
             corpus="$RUNNER_TEMP/corpus/$name"
             mkdir -p "$corpus"
             cp fuzz/seeds/"${name#fuzz_}"/* "$corpus"/
             echo "::group::$name"
-            python "$target" -max_total_time=60 -timeout=10 -rss_limit_mb=2048 "$corpus"
+            python "$target" -max_total_time=60 -timeout=10 -rss_limit_mb=2048 \
+              -artifact_prefix="$RUNNER_TEMP/fuzz-crashes/$name-" "$corpus"
             echo "::endgroup::"
           done
+      - name: Keep the reproducing input
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: fuzz-crashes
+          path: ${{ runner.temp }}/fuzz-crashes/
 
   docker:
     # Build the release image on every push so a broken Dockerfile is caught here, not at release time.

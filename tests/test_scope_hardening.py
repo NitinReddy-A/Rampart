@@ -84,6 +84,18 @@ def test_numeric_string_limit_is_coerced_and_junk_rejected():
         EngagementScope.from_text(mk(mtr="true"))
 
 
+@pytest.mark.parametrize("raw", ["5000\x1f", "\x1c7\x1d", "  42\x1e "])
+def test_int_limit_that_int_rejects_is_still_a_scope_error(raw):
+    """Fuzzer find (fuzz/fuzz_scope_contract.py): the guard's \\s accepts \\x1c-\\x1f but int()
+    doesn't, so these escaped as a bare ValueError — a crash, not a clean fail-closed refusal."""
+    from rampart import yaml_lite
+
+    d = yaml_lite.load(mk())
+    d["limits"]["max_total_requests"] = raw
+    with pytest.raises(ScopeError, match="max_total_requests must be an integer"):
+        EngagementScope.from_dict(d)
+
+
 def test_unknown_limit_or_policy_key_rejected():
     with pytest.raises(ScopeError):
         EngagementScope.from_text(mk() + "  max_total_request: 5\n")
