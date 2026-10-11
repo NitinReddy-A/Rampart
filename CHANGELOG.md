@@ -104,6 +104,14 @@ surface against live targets and reproduced each issue before it was fixed. Ever
 regression test (the suite grew from 197 to 661 tests).
 
 ### Security
+- **Scope glob matching can no longer be made to hang (ReDoS).** Path globs (`paths_include` /
+  `paths_exclude`) and host globs (`hosts_exclude`) were compiled to `.*` / `[^/]*` regexes, which
+  backtrack exponentially on wildcard-heavy patterns — while the path or host being matched comes
+  from the target (the crawler matched raw crawled paths). `/**/**/**/**/x` against an 800-character
+  path, or `*a*a*a*a*a*a*a*a*b` against a long host, ran for seconds to minutes. Globs are now
+  matched in linear time by tracking reachable positions; a differential test pins the exact
+  regex semantics (450k randomized cases, including case-folding and newline edge cases, agree).
+  Found by the scope-contract fuzzer; the input joins the seed corpus.
 - **Hash-pinned build and CI supply chain.** Every `pip install` in CI, the release, the Docker
   image, and the composite action now installs from hash-locked files (`requirements/*.txt`,
   `--require-hashes`, compiled from `requirements/*.in` with `make lock`) or installs Rampart

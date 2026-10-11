@@ -124,39 +124,104 @@ def canonical_path(path: str) -> str:
     return path_forms(path)[-1]
 
 
+# Globs are matched by tracking the set of text positions reachable after each token — linear in
+# len(text) per token — never by compiling them to a backtracking regex: "*****…/api/*" or
+# "*a*a*a*b" made the `.*` / `[^/]*` regexes backtrack exponentially (found by
+# fuzz/fuzz_scope_contract.py), and the text matched is a request path or host the TARGET controls.
+# Literal runs still go through `re` (a fixed string can't backtrack), so case-insensitive
+# exclusions fold characters exactly as before.
+_LIT, _SEG, _ANY, _LABELS = range(4)
+
+
+def _glob_step(kind: int, arg, text: str, cur: set[int]) -> set[int]:
+    """Positions reachable after one token, from the positions ``cur`` reachable before it."""
+    if kind == _LIT:  # arg: compiled literal
+        return {m.end() for p in cur if (m := arg.match(text, p))}
+    n, start, out = len(text), min(cur), set()
+    if kind == _ANY:  # any run of characters
+        return set(range(start, n + 1))
+    if kind == _SEG:  # any run of characters other than the separator ``arg``
+        alive = False
+        for j in range(start, n + 1):
+            alive = j in cur or (alive and text[j - 1] != arg)
+            if alive:
+                out.add(j)
+        return out
+    # _LABELS: one or more non-empty runs, each ending in the separator ``arg``
+    in_label = ended = False
+    for j in range(start, n + 1):
+        if ended:
+            out.add(j)
+        if j == n:
+            break
+        if text[j] != arg:
+            in_label, ended = in_label or ended or j in cur, False
+        else:
+            in_label, ended = False, in_label
+    return out
+
+
+def _glob_run(tokens, text: str) -> set[int]:
+    cur = {0}
+    for kind, arg in tokens:
+        if not cur:
+            break
+        cur = _glob_step(kind, arg, text, cur)
+    return cur
+
+
+def _at_end(p: int, text: str) -> bool:
+    """Where a regex ``$`` would match: the end, or just before a final newline."""
+    n = len(text)
+    return p == n or (p == n - 1 and text[-1] == "\n")
+
+
+def _literal(text: str, flags: int = 0):
+    return (_LIT, re.compile(re.escape(text), flags))
+
+
 @lru_cache(maxsize=1024)
-def _glob_to_regex(pattern: str, exclusion: bool = False) -> re.Pattern:
+def _path_glob(pattern: str, exclusion: bool) -> tuple[tuple, str]:
     """Path glob: ``**`` matches across ``/``; ``*`` matches within a segment.
 
     The pattern is normalized like a path (trailing-slash insensitive). For EXCLUSIONS the
     match is also case-insensitive and a trailing ``/**`` matches the directory itself
     (``/api/admin/**`` excludes ``/api/admin``) — exclusions err on the side of matching more;
-    inclusions keep the narrower, case-sensitive meaning.
+    inclusions keep the narrower, case-sensitive meaning. Returns ``(tokens, tail)`` where tail
+    is "" (none), "required" (``/`` then anything) or "optional" (exclusions).
     """
     pat = pattern
     if len(pat) > 1 and pat.endswith("/") and not pat.endswith("**/"):
         pat = pat.rstrip("/") or "/"
     tail = ""
     if pat.endswith("/**") and len(pat) > 3:
-        pat, tail = pat[:-3], ("(?:/.*)?" if exclusion else "/.*")
-    out, i = [], 0
+        pat, tail = pat[:-3], ("optional" if exclusion else "required")
+    flags = re.IGNORECASE if exclusion else 0
+    tokens, lit, i = [], "", 0
     while i < len(pat):
-        c = pat[i]
-        if c == "*":
-            if pat[i : i + 2] == "**":
-                out.append(".*")
-                i += 2
-                continue
-            out.append("[^/]*")
-        else:
-            out.append(re.escape(c))
-        i += 1
-    flags = re.IGNORECASE | re.DOTALL if exclusion else re.DOTALL
-    return re.compile("^" + "".join(out) + tail + "$", flags)
+        if pat[i] != "*":
+            lit += pat[i]
+            i += 1
+            continue
+        if lit:
+            tokens.append(_literal(lit, flags))
+            lit = ""
+        wide = pat[i : i + 2] == "**"
+        tokens.append((_ANY, None) if wide else (_SEG, "/"))
+        i += 2 if wide else 1
+    if lit:
+        tokens.append(_literal(lit, flags))
+    if tail == "required":
+        tokens += [_literal("/"), (_ANY, None)]
+    return tuple(tokens), tail
 
 
 def path_glob_match(pattern: str, path: str, exclusion: bool = False) -> bool:
-    return _glob_to_regex(pattern, exclusion).match(path) is not None
+    tokens, tail = _path_glob(pattern, exclusion)
+    ends = _glob_run(tokens, path)
+    if tail == "optional":  # "(?:/.*)?" — the directory itself, or anything below it
+        return any(_at_end(p, path) or path.startswith("/", p) for p in ends)
+    return any(_at_end(p, path) for p in ends)
 
 
 # --------------------------------------------------------------------------- #
@@ -607,22 +672,26 @@ def _ip_forms(addr) -> list:
 
 
 @lru_cache(maxsize=256)
-def _host_regex(pattern: str) -> re.Pattern:
+def _host_glob_tokens(pattern: str) -> tuple:
     pattern = pattern.lower().rstrip(".")
-    prefix = ""
+    tokens = []
     for lead in ("**.", "*."):
         if pattern.startswith(lead):
             pattern = pattern[len(lead) :]
-            prefix = r"(?:[^.]+\.)+"  # any subdomain depth (one or more labels)
+            tokens.append((_LABELS, "."))  # any subdomain depth (one or more labels)
             break
-    body = re.escape(pattern).replace(r"\*", "[^.]*")
-    return re.compile("^" + prefix + body + "$")
+    for i, part in enumerate(pattern.split("*")):
+        if i:
+            tokens.append((_SEG, "."))  # within one label
+        if part:
+            tokens.append(_literal(part))
+    return tuple(tokens)
 
 
 def _host_glob(pattern: str, host: str) -> bool:
     """``*.acme.com`` / ``**.acme.com`` exclude every subdomain at any depth (not the apex);
     a ``*`` elsewhere matches within one label; otherwise exact (case-insensitive)."""
-    return _host_regex(pattern).match(host) is not None
+    return any(_at_end(p, host) for p in _glob_run(_host_glob_tokens(pattern), host))
 
 
 def _extract_front_matter(text: str) -> str:

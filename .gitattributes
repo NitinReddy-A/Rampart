@@ -1,0 +1,2 @@
+# Fuzz seeds are exact reproducer inputs: never normalise their line endings.
+fuzz/seeds/** -text

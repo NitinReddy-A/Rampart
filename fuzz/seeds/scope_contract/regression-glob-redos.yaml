@@ -1,0 +1,14 @@
+api÷ersion: security-agent/v1
+kind: EngagementScope
+authorization:
+  owner: "a@example.com"
+  autho^rized_by: "b@example.com"
+  ticket: "nnnnnpiV(((((((((T-1"
+  attestation: "authorized"
+  expires: "2099-01-01T00:00:00Z"
+scope:
+  in_scope:
+    - host: "app.example.com"
+      ports: [443]
+      paths_include: ["*****************************************************************************/api/*", "/v2/**"]
+      methods:_requests: 5000

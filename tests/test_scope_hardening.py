@@ -203,3 +203,86 @@ def test_metadata_and_embedded_ipv4_forms_hard_blocked(ip):
 def test_ordinary_ips_still_allowed():
     s = EngagementScope.from_text(mk())
     assert s.ip_allowed("127.0.0.1") and s.ip_allowed("10.0.0.5") and s.ip_allowed("::1")
+
+
+# ------------------------------------------------- glob matching: linear time, regex semantics
+def _reference_path_regex(pattern, exclusion):
+    """The original glob -> regex translation: the readable spec of path-glob semantics. Safe to
+    use only on short inputs — it backtracks exponentially on wildcard-heavy patterns."""
+    import re
+
+    pat = pattern
+    if len(pat) > 1 and pat.endswith("/") and not pat.endswith("**/"):
+        pat = pat.rstrip("/") or "/"
+    tail = ""
+    if pat.endswith("/**") and len(pat) > 3:
+        pat, tail = pat[:-3], ("(?:/.*)?" if exclusion else "/.*")
+    out, i = [], 0
+    while i < len(pat):
+        if pat[i] == "*":
+            wide = pat[i : i + 2] == "**"
+            out.append(".*" if wide else "[^/]*")
+            i += 2 if wide else 1
+            continue
+        out.append(re.escape(pat[i]))
+        i += 1
+    flags = re.IGNORECASE | re.DOTALL if exclusion else re.DOTALL
+    return re.compile("^" + "".join(out) + tail + "$", flags)
+
+
+def _reference_host_regex(pattern):
+    import re
+
+    pattern = pattern.lower().rstrip(".")
+    prefix = ""
+    for lead in ("**.", "*."):
+        if pattern.startswith(lead):
+            pattern, prefix = pattern[len(lead) :], r"(?:[^.]+\.)+"
+            break
+    return re.compile("^" + prefix + re.escape(pattern).replace(r"\*", "[^.]*") + "$")
+
+
+def test_glob_matching_keeps_the_regex_semantics():
+    """Differential check of the linear matcher against the regex spec on short random inputs,
+    including case-folding specials (Kelvin sign, long s) and a trailing newline."""
+    import random
+
+    from rampart.schemas.scope import _host_glob, path_glob_match
+
+    rng = random.Random(7)
+    path_chars = ["/", "a", "A", "b", "*", ".", "\n", "K", "k", "ſ", "s"]
+    host_chars = [".", "a", "b", "A", "*", "-", "\n"]
+
+    def rs(chars, n):
+        return "".join(rng.choice(chars) for _ in range(rng.randint(0, n)))
+
+    for _ in range(4000):
+        pat, path = rs(path_chars, 7), rs(path_chars, 9)
+        for exclusion in (False, True):
+            expected = _reference_path_regex(pat, exclusion).match(path) is not None
+            assert path_glob_match(pat, path, exclusion) == expected, (pat, path, exclusion)
+        pat, host = rs(host_chars, 7), rs(host_chars, 9)
+        assert _host_glob(pat, host) == (_reference_host_regex(pat).match(host) is not None), (pat, host)
+
+
+@pytest.mark.parametrize(
+    "check",
+    [
+        # the fuzzer's find: 77 stars made the regex backtrack for >10s on a short path
+        lambda m, h: m("*" * 77 + "/api/*", "/" + "a" * 60),
+        lambda m, h: m("/**/**/**/**/x", "/" + "a/" * 2000, True),  # plausible pattern, long crawled path
+        lambda m, h: m("/**a" * 20 + "**b", "/" + "a" * 500),
+        lambda m, h: h("*a*a*a*a*a*a*a*a*b", "a" * 200),
+        lambda m, h: h("**.*a*a*a*a*b.com", ("a" * 60 + ".") * 4 + "com"),
+    ],
+)
+def test_glob_matching_is_linear_on_adversarial_inputs(check):
+    """Patterns come from the scope contract, but paths and hosts come from the TARGET: a
+    wildcard-heavy glob must not let a long path or host hang the authorization gate (ReDoS)."""
+    import time
+
+    from rampart.schemas.scope import _host_glob, path_glob_match
+
+    t = time.perf_counter()
+    assert check(path_glob_match, _host_glob) is False
+    assert time.perf_counter() - t < 1.0
