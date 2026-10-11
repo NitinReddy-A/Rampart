@@ -123,7 +123,7 @@ jobs:
           load: true
           tags: rampart:ci
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error=true   # a cache-write race must never fail the build
       - name: Smoke-test image
         run: |
           docker run --rm rampart:ci --version
