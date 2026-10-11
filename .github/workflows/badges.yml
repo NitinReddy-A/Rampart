@@ -1,0 +1,52 @@
+# README badges for the live OpenSSF Scorecard score and the latest release.
+#
+# GitHub fetches README images through its camo proxy, which gives up after ~4s, and shields.io's
+# dynamic badges are often slower than that, so they rendered as broken images (the same badges on
+# far busier repos did too). This renders them with scripts/render_badges.py and publishes them to
+# the `badges` branch; the README reads them from raw.githubusercontent.com, which GitHub serves
+# directly. The branch holds one commit and nothing else; it is force-pushed on every run.
+name: Badges
+
+on:
+  workflow_run:
+    workflows: [Scorecard]   # the score changes when Scorecard publishes a new result
+    types: [completed]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: badges
+  cancel-in-progress: false
+
+jobs:
+  badges:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push to the `badges` branch (main is protected by the ruleset)
+    steps:
+      # The default ref only: nothing from a pull request is checked out or run here.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Render badges
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/render_badges.py "$RUNNER_TEMP/badges"
+      - name: Publish to the badges branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: ${{ runner.temp }}/badges
+        run: |
+          git init -q -b badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scorecard.svg release.svg
+          git commit -q -m "Update README badges"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges

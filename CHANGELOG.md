@@ -88,6 +88,19 @@ All notable changes to Rampart are documented here. The format follows
   control and dropped, instead of being reported as an exposed file.
 
 ### Changed
+- **New logo and README hero.** The logo is a crenellated rampart-shield with a terminal prompt
+  and a "proven"-green cursor. The README opens on an animated Rampart console replaying a real
+  `rampart test --deep --repo` run against the demo app: worker agents testing 57 hypotheses, an
+  independent validator confirming 21 with proof and dropping 66, the selected finding's evidence,
+  and the scope → report pipeline (static for `prefers-reduced-motion`). The HTML-report
+  screenshot moved to "Reports and compliance".
+- **README badges no longer depend on shields.io.** GitHub loads README images through its camo
+  proxy, which gives up after ~4s, and shields' badges were regularly slower than that — the
+  Scorecard and Release badges rendered broken (so did the same badges on far busier repos). The
+  live ones (Scorecard score, latest release) are now rendered by `scripts/render_badges.py` in a
+  `Badges` workflow after every Scorecard run and release, published to a `badges` branch, and
+  served from raw.githubusercontent.com, which GitHub doesn't proxy; the fixed-text ones are
+  committed SVGs.
 - **The demo's insecure-by-design IaC fixtures moved to `examples/demo_target/testdata/iac/`.**
   `testdata/` is where tools such as OpenSSF Scorecard expect test input, so the deliberately
   unpinned fixture Dockerfile is no longer reported as an unpinned dependency of this repository.
