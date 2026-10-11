@@ -8,7 +8,9 @@ import os
 
 from rampart.iac import scan_iac
 
-IAC = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "examples", "demo_target", "iac"))
+IAC = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "examples", "demo_target", "testdata", "iac")
+)
 
 
 def test_iac_finds_expected_cwes():

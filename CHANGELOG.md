@@ -59,6 +59,14 @@ All notable changes to Rampart are documented here. The format follows
   doesn't, so e.g. `max_total_requests: 5000\x1f` escaped as a bare `ValueError` — a traceback
   from the CLI and MCP server instead of the fail-closed `ScopeError` refusal (nothing ran either
   way). The input is now part of the fuzz seed corpus.
+- **SCA: hash-locked requirements are pinned — and CVE-matched.** In a pip-compile / `uv
+  --generate-hashes` lock, the `--hash=` options follow the specifier, which failed the exact-pin
+  match: every such dependency was reported as *unpinned* and, worse, never matched against OSV, so
+  a vulnerable package in a hash-locked file was silently missed. Only lines with an environment
+  marker survived (the marker split also dropped the hashes). pip's per-requirement options
+  (`--hash`, `--config-settings`/`-C`, `--global-option`) are now stripped before parsing. Found by
+  running Rampart's own white-box scan on this repository: 47 of its 80 locked packages were
+  affected.
 - **Content-proof oracles for CMDI, SSRF, path traversal, and BFLA** — they now prove the flaw from
   real response content instead of a marker the bundled demo emits, removing both false positives
   (a reflecting endpoint wrongly confirmed) and false negatives (a real app missed for lacking the
@@ -80,6 +88,9 @@ All notable changes to Rampart are documented here. The format follows
   control and dropped, instead of being reported as an exposed file.
 
 ### Changed
+- **The demo's insecure-by-design IaC fixtures moved to `examples/demo_target/testdata/iac/`.**
+  `testdata/` is where tools such as OpenSSF Scorecard expect test input, so the deliberately
+  unpinned fixture Dockerfile is no longer reported as an unpinned dependency of this repository.
 - **Corrected documentation overclaims** flagged by a competitive review, so the docs match the
   implementation exactly: the LLM testing is described as **4 of the OWASP LLM Top 10 categories**
   (LLM01/05/07/02), not all ten; the "every class has a negative control and 2+ reproductions"

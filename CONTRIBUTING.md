@@ -56,7 +56,7 @@ pip install -e ".[all]"        # everything at once
 ## Running things
 
 ```bash
-pytest                          # the full suite (currently ~200 tests)
+pytest                          # the full suite (currently ~700 tests)
 pytest tests/test_acceptance.py # one file
 python benchmarks/run_benchmark.py   # precision/recall against the demo target
 ruff check . && ruff format .   # lint + format

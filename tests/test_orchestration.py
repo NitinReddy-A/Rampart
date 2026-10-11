@@ -152,7 +152,7 @@ def test_engagement_wires_iac_and_grpc(tmp_path, vuln_server):
     )
     eng = Engagement(cfg)
     iac = eng.run_iac()
-    assert iac, "expected IaC findings from the demo iac/ fixtures"
+    assert iac, "expected IaC findings from the demo testdata/iac/ fixtures"
     assert all("iac" in f.tags for f in iac)
     # gRPC is a no-op without the [grpc] extra / a gRPC target — must never raise.
     assert eng.run_grpc() == [] or isinstance(eng.run_grpc(), list)

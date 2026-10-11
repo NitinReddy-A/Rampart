@@ -70,6 +70,9 @@ def _line_of(text: str, needle: str) -> int:
 # --------------------------------------------------------------------------- PyPI
 _REQ_LINE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)\s*(\[[^\]]*\])?\s*(.*)$")
 _EXACT_PIN = re.compile(r"^===?\s*([A-Za-z0-9._+!-]+)$")
+# pip's per-requirement options, which follow the specifier on a requirements-file line — above
+# all the `--hash=` of a hash-locked file (pip-compile / uv --generate-hashes).
+_PER_REQ_OPTION = re.compile(r"\s(?:--hash|--config-settings|--global-option|--install-option|-C)\b.*$")
 
 
 def _parse_pep508(spec: str):
@@ -130,6 +133,9 @@ def _requirements(path: str, repo: str, _stack: frozenset = frozenset()):
             continue
         if s.startswith("-") or re.match(r"^[a-z][a-z0-9+.-]*://", s) or s.startswith("git+"):
             continue  # options, editable installs, bare URLs
+        # Without this, "pkg==1.0 --hash=sha256:…" failed the exact-pin match: every hash-locked
+        # dependency was reported unpinned AND skipped by CVE matching.
+        s = _PER_REQ_OPTION.sub("", s)
         parsed = _parse_pep508(s)
         if not parsed:
             continue

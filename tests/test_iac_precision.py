@@ -154,7 +154,9 @@ def test_dockerfile_final_stage_user_and_untagged_base(tmp_path):
 
 
 def test_demo_iac_findings_unchanged():
-    iac = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "examples", "demo_target", "iac"))
+    iac = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "examples", "demo_target", "testdata", "iac")
+    )
     got = sorted((f.affected_code.file, f.affected_code.start_line, f.vuln_class) for f in scan_iac(iac))
     assert got == [
         ("Dockerfile", 3, "iac-docker-latest-base-image"),
