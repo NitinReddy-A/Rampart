@@ -44,6 +44,16 @@ All notable changes to Rampart are documented here. The format follows
   and still fully subject to the policy pipeline (`active` writes still require policy approval).
 
 ### Fixed
+- **SARIF is accepted by GitHub code scanning.** A runtime finding put its endpoint URL
+  (`http://host/path`) — or, for infra/TLS findings, a bare `host:443`, which parses as scheme
+  `host` — straight into `artifactLocation.uri`, and code scanning rejects the *whole* upload when
+  any location is an absolute URI whose scheme isn't the checkout's (`SARIF URI scheme "http" did
+  not match the checkout URI scheme "file"`). Every result now has exactly one relative,
+  scheme-less location: the repo file for a source-mapped finding, otherwise a percent-encoded
+  virtual path (`127.0.0.1%3A8080/api/users`, displayed as `127.0.0.1:8080/api/users`) that can't
+  climb out of the repo root, with the exact URL kept as a logical location and a stable
+  `primaryLocationLineHash` so alerts track across scans. Verified against GitHub's SARIF
+  processor; the test that asserted the old behaviour now asserts code scanning's constraints.
 - **Content-proof oracles for CMDI, SSRF, path traversal, and BFLA** — they now prove the flaw from
   real response content instead of a marker the bundled demo emits, removing both false positives
   (a reflecting endpoint wrongly confirmed) and false negatives (a real app missed for lacking the
@@ -78,6 +88,16 @@ surface against live targets and reproduced each issue before it was fixed. Ever
 regression test (the suite grew from 197 to 661 tests).
 
 ### Security
+- **Hash-pinned build and CI supply chain.** Every `pip install` in CI, the release, the Docker
+  image, and the composite action now installs from hash-locked files (`requirements/*.txt`,
+  `--require-hashes`, compiled from `requirements/*.in` with `make lock`) or installs Rampart
+  itself with `--no-deps`; builds run without isolation so the pinned setuptools is the backend
+  actually used. Docker base images are pinned by multi-arch digest. `requirements-dev.txt` is now
+  a hash-pinned lock, which also moves the dev toolchain off `filelock` < 3.20.3 (CVE-2025-68146,
+  CVE-2026-22701) and `pygments` < 2.20.0.
+- **Continuous fuzzing.** A new CI job runs coverage-guided Atheris fuzzers (`fuzz/`) against the
+  scope-contract parser and gate matchers (must fail closed on any input) and the SARIF location
+  builder (must stay a relative, scheme-less uri-reference).
 - **Scope enforcement now covers every path out.** The target's port and scheme are checked at
   startup (previously only the host was). Test-account logins, the headless browser, the
   infrastructure scan, and gRPC now go through the same scope checks and audit log as every other

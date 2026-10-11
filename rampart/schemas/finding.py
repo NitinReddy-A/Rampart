@@ -169,10 +169,17 @@ class Finding:
     def to_sarif_result(self, repo_root: str = "") -> dict:
         """One SARIF 2.1.0 ``result``.
 
-        A finding with ``affected_code.file`` gets exactly ONE physical location: the source file
-        as a repo-relative, forward-slash URI under ``uriBaseId: %SRCROOT%`` (relativised against
-        ``repo_root`` when given; never an absolute local path), with a 1-based region when the
-        line is known. A runtime finding keeps its endpoint URL as the location."""
+        Every result gets exactly ONE physical location whose uri is relative and scheme-less,
+        because GitHub code scanning rejects the WHOLE upload when any artifactLocation is an
+        absolute URI whose scheme is not the checkout's (``file``). A finding with
+        ``affected_code.file`` points at the source file, repo-relative under ``uriBaseId:
+        %SRCROOT%`` (relativised against ``repo_root`` when given; never an absolute local path),
+        with a 1-based region when the line is known. A runtime finding gets a virtual
+        ``<host>[:port]/<path>`` path (:func:`sarif_endpoint_uri`), keeps its exact endpoint URL as
+        a logical location, and carries its own ``primaryLocationLineHash`` — there is no file for
+        the uploader to fingerprint."""
+        import hashlib
+
         from ..reporting.status import norm_severity
 
         level = {
@@ -185,6 +192,7 @@ class Finding:
         rule_id = (self.cwe[0] if self.cwe else self.vuln_class) or "finding"
         target = self.asset.get("target", "") or ""
         code_file = self.affected_code.file if self.affected_code and self.affected_code.file else ""
+        fingerprints = {"dedupeKey/v1": self.dedupe_key or self.id}
         if code_file:
             phys = {
                 "artifactLocation": {
@@ -201,18 +209,30 @@ class Finding:
                 }
             locations = [{"physicalLocation": phys}]
         else:
-            # artifactLocation.uri must be a real URI. A runtime endpoint URL is one; an asset
-            # coordinate such as "PyPI:flask" is not — that goes to logicalLocations instead.
-            loc_uri = self.endpoint.get("url") or ""
-            if not loc_uri and "://" in target:
-                loc_uri = target
-            locations = [{"physicalLocation": {"artifactLocation": {"uri": loc_uri}}}] if loc_uri else []
+            # Never the endpoint itself as the uri: "http://host/x" — and a bare "host:443", which
+            # parses as scheme "host" — would get the whole SARIF upload rejected by code scanning.
+            endpoint = self.endpoint.get("url") or (target if "://" in target else "")
+            if endpoint:
+                uri = sarif_endpoint_uri(endpoint)
+            elif self.asset.get("type") == "dependency" and target:
+                uri = sarif_virtual_path(target.split(":", 1))  # "PyPI:flask" -> "PyPI/flask"
+            else:
+                uri = sarif_virtual_path([rule_id])
+            uri = uri or "finding"
+            loc = {"physicalLocation": {"artifactLocation": {"uri": uri}}}
+            if endpoint:
+                loc["logicalLocations"] = [{"fullyQualifiedName": endpoint, "kind": "resource"}]
+            locations = [loc]
+            identity = f"{rule_id}|{self.dedupe_key or uri}"
+            fingerprints["primaryLocationLineHash"] = (
+                hashlib.sha256(identity.encode()).hexdigest()[:16] + ":1"
+            )
         result = {
             "ruleId": rule_id,
             "level": level,
             "message": {"text": f"{self.title} — {self.description}"},
             "locations": locations,
-            "partialFingerprints": {"dedupeKey/v1": self.dedupe_key or self.id},
+            "partialFingerprints": fingerprints,
             "properties": {
                 "vuln_class": self.vuln_class,
                 "confidence": self.confidence,
@@ -229,11 +249,44 @@ class Finding:
             eco, _, pkg = target.partition(":")
             result["properties"]["package"] = {"ecosystem": eco, "name": pkg or target}
             logical = {"name": pkg or target, "fullyQualifiedName": target, "kind": "package"}
-            if result["locations"]:
-                result["locations"][0]["logicalLocations"] = [logical]
-            else:
-                result["locations"].append({"logicalLocations": [logical]})
+            loc = result["locations"][0]
+            loc["logicalLocations"] = [logical, *loc.get("logicalLocations", [])]
         return result
+
+
+def sarif_endpoint_uri(endpoint: str) -> str:
+    """A scheme-less virtual path (``<host>[:port]/<path>``) standing in for a runtime endpoint in
+    a SARIF ``artifactLocation``.
+
+    Code scanning reads a relative uri as repo-relative and accepts it even when no such file
+    exists; an absolute one must use the checkout's ``file`` scheme or the upload is rejected.
+    So the scheme, userinfo, query and fragment are dropped and every reserved character —
+    ':' included, so ``host:443`` can't parse as a scheme — is percent-encoded. The exact
+    endpoint is reported separately as a logical location."""
+    from urllib.parse import unquote, urlsplit
+
+    s = str(endpoint or "").strip().replace("\\", "/")
+    if "://" not in s and not s.startswith("/"):
+        s = "//" + s  # "host:port[/path]" — parse the host as an authority, not a scheme
+    try:
+        parts = urlsplit(s)
+        host = parts.hostname or ""
+        authority = f"[{host}]" if ":" in host else host
+        if parts.port is not None:
+            authority += f":{parts.port}"
+        path = parts.path
+    except ValueError:  # malformed port / IPv6 literal: keep the raw text as path segments
+        authority, path = "", s
+    return sarif_virtual_path([authority, *(unquote(p) for p in path.split("/"))]) or "endpoint"
+
+
+def sarif_virtual_path(segments) -> str:
+    """Join ``segments`` into a relative, scheme-less SARIF uri: each one percent-encoded down to
+    RFC 3986 unreserved characters, and empty / ``.`` / ``..`` segments dropped so the path can
+    never climb out of the repository root."""
+    from urllib.parse import quote
+
+    return "/".join(quote(str(s), safe="-._~") for s in segments if s not in ("", ".", ".."))
 
 
 def sarif_relative_uri(path: str, repo_root: str = "") -> str:

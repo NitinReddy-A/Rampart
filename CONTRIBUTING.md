@@ -40,6 +40,11 @@ pip install -e ".[dev]"        # editable install + pytest + ruff + pre-commit
 pre-commit install             # run lint/format on every commit (optional but nice)
 ```
 
+For exactly the tool versions CI uses, install the hash-pinned lock instead:
+`pip install -r requirements-dev.txt && pip install --no-deps -e .`. CI, the release, and the
+Docker image only ever install from the hash-locked files (`--require-hashes`). To change a
+tool, edit its `requirements/*.in` source and run `make lock` (needs [uv](https://docs.astral.sh/uv/)).
+
 Optional extras, only if you're working on those parts:
 
 ```bash

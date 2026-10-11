@@ -1,0 +1,6 @@
+# CI lint + test tooling (ci.yml). `make lock` compiles this into the hash-pinned ci.txt that CI
+# installs with `pip install --require-hashes`. setuptools is the build backend, pinned here so
+# `pip install --no-deps --no-build-isolation -e .` never fetches an unpinned one.
+pytest
+ruff==0.16.10
+setuptools>=77

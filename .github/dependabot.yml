@@ -9,9 +9,11 @@ updates:
       actions:
         patterns: ["*"]
 
-  # Only dev/optional tooling lives here; Rampart's core has no runtime dependencies.
+  # Only dev/build/CI tooling lives here; Rampart's core has no runtime dependencies. The
+  # hash-locked files (requirements-dev.txt, requirements/*.txt) are uv-compiled from their
+  # requirements/*.in sources, and Dependabot re-locks them with their hashes.
   - package-ecosystem: pip
-    directory: /
+    directories: ["/", "/requirements"]
     schedule:
       interval: weekly
     groups:

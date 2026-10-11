@@ -13,6 +13,11 @@
 #     with:
 #       name: rampart-report
 #       path: .rampart/reports/
+#   - uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+#     if: always()                               # findings in the Security tab (security-events: write)
+#     with:
+#       sarif_file: .rampart/reports/report.sarif
+#       category: rampart
 #
 # Only scan assets you own or are explicitly authorized to test. Rampart
 # refuses to run without a valid, unexpired, in-scope rampart.scope.yaml contract.
@@ -91,10 +96,11 @@ runs:
     - name: Install Rampart
       shell: bash
       # Install the package that ships with this action, so the action and the engine
-      # are always exactly the same version.
+      # are always exactly the same version. It has no dependencies (--no-deps), and it is
+      # built with the action's hash-pinned setuptools, so nothing unpinned is fetched.
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install "$GITHUB_ACTION_PATH"
+        python -m pip install --require-hashes -r "$GITHUB_ACTION_PATH/requirements/build.txt"
+        python -m pip install --no-deps --no-build-isolation "$GITHUB_ACTION_PATH"
 
     - name: Run Rampart assessment
       id: rampart

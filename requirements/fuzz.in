@@ -1,0 +1,3 @@
+# Coverage-guided fuzzing (the ci.yml `fuzz` job, Linux x86_64 / CPython 3.12). `make lock`
+# compiles this into the hash-pinned fuzz.txt.
+atheris

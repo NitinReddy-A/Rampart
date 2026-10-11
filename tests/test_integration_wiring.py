@@ -442,19 +442,24 @@ def test_empty_audit_log_is_not_intact(tmp_path):
 
 # ------------------------------------------------------------------ 25. SARIF
 def _check_sarif(doc):
-    """Minimal SARIF 2.1.0 structural check (what GitHub code scanning needs)."""
+    """SARIF 2.1.0 structural check against what GitHub code scanning enforces: every result
+    needs a physical location, and an absolute uri whose scheme isn't the checkout's ("file")
+    gets the WHOLE upload rejected — so every uri must be relative and scheme-less."""
+    from urllib.parse import urlsplit
+
     assert doc["version"] == "2.1.0"
     for run in doc["runs"]:
         assert run["tool"]["driver"]["name"]
         for r in run["results"]:
             assert r["level"] in ("error", "warning", "note", "none")
             assert isinstance(r["message"]["text"], str)
-            for loc in r.get("locations", []):
-                pl = loc.get("physicalLocation")
-                if not pl:
-                    continue
+            assert r["locations"], "code scanning rejects a result without a location"
+            for loc in r["locations"]:
+                pl = loc["physicalLocation"]
                 uri = pl["artifactLocation"]["uri"]
                 assert uri and not os.path.isabs(uri) and ":\\" not in uri and not uri.startswith("/")
+                assert urlsplit(uri).scheme == "" and ":" not in uri.split("/")[0], uri
+                assert not any(c.isspace() for c in uri), uri  # must be a valid uri-reference
                 if "region" in pl:
                     assert pl["region"]["startLine"] >= 1
 
@@ -475,12 +480,77 @@ def test_sarif_source_location_is_repo_relative(tmp_path):
     r2 = f.to_sarif_result()
     assert r2["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "work/repo/a.py"
     assert "region" not in r2["locations"][0]["physicalLocation"]
-    # URL-only finding keeps its URL
+    # a file location is fingerprinted by the uploader from the file's content, not by us
+    assert "primaryLocationLineHash" not in r["partialFingerprints"]
+    # URL-only finding: a scheme-less virtual path; the exact URL is the logical location
     g = _finding("medium")
     g.endpoint = {"url": "http://127.0.0.1:1/y"}
-    assert g.to_sarif_result()["locations"][0]["physicalLocation"]["artifactLocation"]["uri"].startswith(
-        "http"
-    )
+    loc = g.to_sarif_result()["locations"][0]
+    assert loc["physicalLocation"]["artifactLocation"] == {"uri": "127.0.0.1%3A1/y"}
+    assert loc["logicalLocations"] == [{"fullyQualifiedName": "http://127.0.0.1:1/y", "kind": "resource"}]
+
+
+@pytest.mark.parametrize(
+    "endpoint, uri",
+    [
+        ("http://127.0.0.1:8080/api/users/1?id=2#frag", "127.0.0.1%3A8080/api/users/1"),
+        ("https://user:pw@Example.COM/a b/%2e%2e/c", "example.com/a%20b/c"),
+        ("example.com:443", "example.com%3A443"),  # bare host:port would parse as scheme "example.com"
+        ("10.0.0.5:22", "10.0.0.5%3A22"),
+        ("http://[::1]:9000/x", "%5B%3A%3A1%5D%3A9000/x"),
+        ("grpc://svc.local:50051", "svc.local%3A50051"),
+        ("/api/x", "api/x"),
+        ("http://h/a%2Fb/../c", "h/a%2Fb/c"),
+        ("http://h:99999/x", "http%3A/h%3A99999/x"),  # malformed port: raw text, still scheme-less
+        ("//../x", "x"),  # a dot-segment "host" can't climb out of the repo root
+        ("http://./%2E%2E/../", "endpoint"),
+        ("", "endpoint"),
+    ],
+)
+def test_sarif_endpoint_uri_is_scheme_less(endpoint, uri):
+    from urllib.parse import urlsplit
+
+    from rampart.schemas.finding import sarif_endpoint_uri
+
+    out = sarif_endpoint_uri(endpoint)
+    assert out == uri
+    assert urlsplit(out).scheme == "" and not out.startswith("/")
+
+
+def test_report_sarif_runtime_locations_are_code_scanning_safe(tmp_path):
+    """Regression: an http:// endpoint as artifactLocation.uri got every Rampart SARIF upload
+    rejected by code scanning ("SARIF URI scheme "http" did not match the checkout URI scheme
+    "file""). Every runtime shape must yield a scheme-less location and a stable fingerprint."""
+    from rampart.reporting import ReportBuilder
+    from rampart.schemas.scope import EngagementScope
+
+    scope = EngagementScope.from_file(write_engagement(tmp_path, 18124))
+
+    def findings():
+        web = _finding("high", dedupe_key="app:SQLI:/api/p")
+        web.endpoint = {"method": "GET", "url": "http://127.0.0.1:18124/api/p?q=1"}
+        tls = _finding("medium", vuln_class="TLS_WEAK_PROTOCOL", dedupe_key="infra-tls:h:443")
+        tls.asset = {"type": "infrastructure", "target": "example.com:443"}
+        tls.endpoint = {"method": "TLS", "url": "example.com:443"}
+        dep = _finding("low", vuln_class="VULNERABLE_DEPENDENCY")
+        dep.asset = {"type": "dependency", "target": "PyPI:flask"}
+        bare = _finding("info", vuln_class="AGENT_NOTE")
+        dots = _finding("info", vuln_class="..")  # an external tool's ruleId is untrusted text
+        dots.asset = {"type": "dependency", "target": "PyPI:.."}
+        return [web, tls, dep, bare, dots]
+
+    docs = [json.loads(ReportBuilder(findings(), scope, None, {}, {}).to_sarif()) for _ in range(2)]
+    _check_sarif(docs[0])
+    results = docs[0]["runs"][0]["results"]
+    uris = [r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in results]
+    assert uris == ["127.0.0.1%3A18124/api/p", "example.com%3A443", "PyPI/flask", "AGENT_NOTE", "PyPI"]
+    dep = results[2]["locations"][0]["logicalLocations"]
+    assert dep == [{"name": "flask", "fullyQualifiedName": "PyPI:flask", "kind": "package"}]
+    # no file for the uploader to hash: a stable identity of our own, so alerts track across scans
+    hashes = [
+        [r["partialFingerprints"]["primaryLocationLineHash"] for r in d["runs"][0]["results"]] for d in docs
+    ]
+    assert hashes[0] == hashes[1] and len(set(hashes[0])) == len(hashes[0])
 
 
 def test_report_sarif_is_structurally_valid(tmp_path):

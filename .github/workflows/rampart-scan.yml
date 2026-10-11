@@ -8,13 +8,14 @@
 # artifact. Everything stays on loopback — there is no route to any real asset —
 # so it is safe to run on every push.
 #
-# Why an artifact and not the Security tab? Rampart is a DAST tool: its findings
-# are anchored to live endpoint URLs (http://host/path), whereas GitHub code
-# scanning only ingests SARIF whose locations resolve to files in the repo
-# checkout, and rejects the whole upload otherwise. So we publish the SARIF as
-# an artifact. If your findings carry source locations (e.g. you pass `--repo`
-# and the finding maps to a file), you can instead upload to code scanning with
-# github/codeql-action/upload-sarif — see the commented step at the end.
+# Why an artifact and not the Security tab? Only because the demo target is
+# deliberately vulnerable: its findings would be standing noise in THIS repo's
+# Security tab. Rampart's SARIF itself is code-scanning ready — a runtime finding
+# is anchored to a relative virtual path (`127.0.0.1%3A8080/api/users`, shown as
+# 127.0.0.1:8080/api/users) with the exact URL as a logical location, and a
+# finding mapped to source (e.g. via `--repo`) to the repo file and line. In your
+# own repo, upload it with github/codeql-action/upload-sarif — see the commented
+# step at the end.
 #
 # TO USE THIS IN YOUR OWN REPOSITORY, copy this file and:
 #   1. Commit a real rampart.scope.yaml authorization contract (see rampart.scope.example.yaml
@@ -59,11 +60,11 @@ jobs:
           python-version: "3.12"
 
       - name: Install Rampart
+        # In your own repo, use the composite action (uses: NitinReddy-A/Rampart@v1)
+        # or install a pinned release instead of the local checkout.
         run: |
-          python -m pip install --upgrade pip
-          # In your own repo, use the composite action (uses: NitinReddy-A/Rampart@v1)
-          # or install a pinned release instead of the local checkout.
-          pip install -e .
+          python -m pip install --require-hashes -r requirements/build.txt
+          python -m pip install --no-deps --no-build-isolation -e .
 
       - name: Start bundled demo target
         # Isolated, offline, loopback-only — the target we own and test against.
@@ -104,13 +105,13 @@ jobs:
           path: .rampart/reports/
           if-no-files-found: error
 
-      # In your own repo, if your findings carry repo source locations (e.g. via
-      # `--repo`), you can upload the SARIF to the Security tab instead. This
-      # needs `permissions: security-events: write` on the job.
+      # In your own repo, upload the SARIF to the Security tab as well. This needs
+      # `permissions: security-events: write` on the job.
       #
       # - name: Upload SARIF to code scanning
       #   if: always()
       #   uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+      #   with:
       #     sarif_file: .rampart/reports/report.sarif
       #     category: rampart
       #

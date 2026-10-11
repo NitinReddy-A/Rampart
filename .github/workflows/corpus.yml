@@ -29,7 +29,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: pip install -e .
+      - name: Install Rampart (hash-pinned build tooling, no dependencies)
+        run: |
+          python -m pip install --require-hashes -r requirements/build.txt
+          python -m pip install --no-deps --no-build-isolation -e .
       - name: Wait for VAmPI
         run: |
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:5000/ && break || sleep 2; done

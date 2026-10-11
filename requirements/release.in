@@ -1,0 +1,4 @@
+# Release build + distribution checks (release.yml). `make lock` compiles this into the
+# hash-pinned release.txt.
+-r build.in
+twine

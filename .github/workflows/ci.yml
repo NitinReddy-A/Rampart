@@ -28,8 +28,8 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: Install ruff
-        run: python -m pip install --upgrade pip && pip install "ruff==0.16.10"
+      - name: Install ruff (hash-pinned)
+        run: python -m pip install --require-hashes -r requirements/ci.txt
       - name: Lint
         run: ruff check .
       - name: Format check
@@ -53,11 +53,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install package (with dev extra, falling back to pytest)
+      - name: Install test tooling (hash-pinned) and the package
+        # Every dependency comes from the hash-locked requirements/ci.txt; the package itself has
+        # none (--no-deps) and is built with the pinned setuptools (--no-build-isolation).
         run: |
-          python -m pip install --upgrade pip
-          # The [dev] extra provides pytest; fall back if it isn't configured yet.
-          pip install -e ".[dev]" || { pip install -e . && pip install pytest; }
+          python -m pip install --require-hashes -r requirements/ci.txt
+          python -m pip install --no-deps --no-build-isolation -e .
 
       - name: Run tests
         run: python -m pytest -q
@@ -65,6 +66,37 @@ jobs:
       - name: Run reliability benchmark
         # Exits nonzero on any false positive / false negative, gating the build.
         run: python benchmarks/run_benchmark.py
+
+  fuzz:
+    # Coverage-guided fuzzing (Atheris / libFuzzer) of the parsers on Rampart's trust boundary:
+    # the scope contract that gates every scan, and the SARIF locations code scanning ingests.
+    # A crash or a broken invariant fails the job and prints the reproducing input.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install Atheris (hash-pinned) and the package
+        run: |
+          python -m pip install --require-hashes -r requirements/fuzz.txt
+          python -m pip install --require-hashes -r requirements/build.txt
+          python -m pip install --no-deps --no-build-isolation -e .
+      - name: Fuzz
+        run: |
+          for target in fuzz/fuzz_*.py; do
+            name="$(basename "$target" .py)"
+            corpus="$RUNNER_TEMP/corpus/$name"
+            mkdir -p "$corpus"
+            cp fuzz/seeds/"${name#fuzz_}"/* "$corpus"/
+            echo "::group::$name"
+            python "$target" -max_total_time=60 -timeout=10 -rss_limit_mb=2048 "$corpus"
+            echo "::endgroup::"
+          done
 
   docker:
     # Build the release image on every push so a broken Dockerfile is caught here, not at release time.

@@ -513,7 +513,7 @@ Choose any combination with `--report`:
 | `html` | a self-contained, shareable report (light and dark) |
 | `md` | pull requests, wikis, tickets |
 | `json` | your own tooling; the stable schema the SDK reads |
-| `sarif` | code-scanning tools and IDEs |
+| `sarif` | GitHub code scanning (`github/codeql-action/upload-sarif`), other SARIF tools, IDEs |
 | `compliance` / `soc2` | auditors |
 
 The compliance report maps each finding by CWE to the controls it evidences across **SOC 2,

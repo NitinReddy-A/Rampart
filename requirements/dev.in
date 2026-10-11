@@ -1,0 +1,7 @@
+# A contributor's full local toolchain. `make lock` compiles this into the hash-pinned
+# requirements-dev.txt at the repo root (`pip install -r requirements-dev.txt`); the
+# `pip install -e ".[dev]"` route in CONTRIBUTING.md installs the same tools unpinned.
+pytest
+ruff==0.16.10
+pre-commit>=3.5
+PyYAML>=6.0   # optional: scope parsing via PyYAML (a strict built-in parser is used otherwise)
