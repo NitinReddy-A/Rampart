@@ -12,6 +12,7 @@ It reports only the vulnerabilities it can **prove**, with a reproducible exploi
 [![CI](https://github.com/NitinReddy-A/Rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/NitinReddy-A/Rampart/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/NitinReddy-A/Rampart/actions/workflows/codeql.yml/badge.svg)](https://github.com/NitinReddy-A/Rampart/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/NitinReddy-A/Rampart/badge)](https://scorecard.dev/viewer/?uri=github.com/NitinReddy-A/Rampart)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15386/badge)](https://www.bestpractices.dev/projects/15386)
 [![Release](https://img.shields.io/github/v/release/NitinReddy-A/Rampart?color=1D4E89&label=release)](https://github.com/NitinReddy-A/Rampart/releases/latest)
 [![Python](https://img.shields.io/badge/python-3.10%20%E2%80%93%203.13-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![Runtime deps](https://img.shields.io/badge/runtime%20deps-0-2ea44f)](pyproject.toml)
