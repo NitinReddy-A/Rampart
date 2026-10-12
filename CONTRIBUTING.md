@@ -111,6 +111,8 @@ something, it stays human-only and we say so.
 - Write a clear PR description: what, why, and how you verified it.
 - Be honest about limitations in the finding text and the docs. Overclaiming is the one thing
   this project can't afford.
+- **Merging**: Before merging, run `gh pr checks <n> --watch` and make sure `CodeQL`
+  (`github-advanced-security`) has finished on the PR head, especially after a force-push.
 
 ## Reporting bugs and ideas
 
