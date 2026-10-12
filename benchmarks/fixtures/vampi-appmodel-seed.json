@@ -1,0 +1,18 @@
+{
+  "roles": ["user"],
+  "endpoint_hints": [
+    {
+      "path": "/books/v1/{book_title}",
+      "method": "GET",
+      "returns_object_type": "Book",
+      "object_selector": { "param": "book_title", "in": "path" }
+    }
+  ],
+  "objects": [
+    { "type": "Book", "id": "rampart-book-name1", "owner_principal": "name1", "seeded": true, "signature": "RAMPART-VAMPI-SECRET-name1" },
+    { "type": "Book", "id": "rampart-book-name2", "owner_principal": "name2", "seeded": true, "signature": "RAMPART-VAMPI-SECRET-name2" }
+  ],
+  "permissions": [
+    { "role": "user", "object_type": "Book", "action": "read", "constraint": "owner_only" }
+  ]
+}

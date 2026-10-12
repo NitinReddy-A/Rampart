@@ -147,6 +147,8 @@ def _one_run(target, scope_file, gt, work_dir, flags) -> tuple[dict, dict, dict]
         secrets_file=flags.get("secrets", ""),
         openapi=flags.get("openapi", ""),
         appmodel_seed=flags.get("appmodel_seed", ""),
+        login_path=flags.get("login_path") or "/api/login",
+        token_json_path=flags.get("token_path") or "token",
         application=flags.get("application", "corpus"),
         crawl=flags.get("crawl", False),
         active=flags.get("active", False),
@@ -205,6 +207,8 @@ def main(argv=None):
     ap.add_argument("--secrets", default="")
     ap.add_argument("--openapi", default="")
     ap.add_argument("--appmodel-seed", default="")
+    ap.add_argument("--login-path", default="", help="seeded-account login route (default /api/login)")
+    ap.add_argument("--token-path", default="", help="dotted path to the token in the login response")
     ap.add_argument("--application", default="corpus")
     ap.add_argument("--work-dir", default=".rampart-corpus")
     ap.add_argument("--crawl", action="store_true")
@@ -227,6 +231,8 @@ def main(argv=None):
         secrets=args.secrets,
         openapi=args.openapi,
         appmodel_seed=args.appmodel_seed,
+        login_path=args.login_path,
+        token_path=args.token_path,
         application=args.application,
         crawl=args.crawl,
         active=args.active,

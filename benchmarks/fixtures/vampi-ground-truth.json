@@ -1,9 +1,9 @@
 {
-  "_comment": "Best-effort ground truth for OWASP VAmPI (vulnerable=1). Tune path_keys/expected to your VAmPI version; corpus_runner reports missed/unexpected so you can refine. VAmPI's docs enumerate the intended flaws (BOLA, SQLi-ish user lookup, mass-assignment admin flag on register, broken auth).",
+  "_comment": "Ground truth for OWASP VAmPI (vulnerable=1), prepared by benchmarks/vampi_setup.py. Classes follow VAmPI's own vulnerability list: BOLA is GET /books/v1/{book_title} (any user reads another user's book secret), excessive data exposure is the /users/v1/_debug endpoint (plaintext passwords), mass assignment is the 'admin' field on register. corpus_runner reports missed/unexpected so you can refine.",
   "path_keys": ["/users/v1/register", "/users/v1/login", "/users/v1", "/books/v1", "/me"],
   "expected": [
     ["MASS_ASSIGNMENT", "/users/v1/register"],
-    ["IDOR/BOLA", "/users/v1"],
+    ["IDOR/BOLA", "/books/v1"],
     ["EXCESSIVE_DATA", "/users/v1"]
   ]
 }

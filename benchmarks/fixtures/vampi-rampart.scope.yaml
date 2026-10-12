@@ -14,7 +14,7 @@ scope:
       paths_include: ["/**"]
       methods: ["GET", "POST", "PUT", "DELETE"]
   out_of_scope:
-    paths_exclude: []
+    paths_exclude: ["/createdb"]
     hosts_exclude: []
   resolved_ip_allowlist: ["127.0.0.1/32"]
 limits:
@@ -27,8 +27,14 @@ action_policy:
   default_tier_ceiling: 1
   tier2_requires_approval: true
   tier3: deny
-test_accounts: []
+test_accounts:
+  - { id: name1, role: user, secret_ref: "vampi/name1" }
+  - { id: name2, role: user, secret_ref: "vampi/name2" }
 notify: {}
 ---
 
 # VAmPI corpus scope (CI). Authorizes only the locally-run VAmPI container on 127.0.0.1:5000.
+# /createdb is excluded: it is a GET that drops and re-populates VAmPI's database, so a probe
+# reaching it mid-run would wipe the seeded books. benchmarks/vampi_setup.py calls it once before
+# the scan, seeds one book per account, and writes the secrets file for the two test accounts
+# (VAmPI's built-in name1 / name2 users).
