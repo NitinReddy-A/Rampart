@@ -4,6 +4,13 @@
 <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="8" stdDeviation="11" flood-color="#000" flood-opacity="0.35"/></filter>
 <clipPath id="win"><rect width="856" height="711" rx="10"/></clipPath>
 </defs>
+<style>
+.p { animation: p 1ms backwards; }
+@keyframes p { from { opacity: 0; } }
+.cur { animation: cur 3.15s step-end forwards; }
+@keyframes cur { 0% { transform: translateY(0px); opacity: 1; } 15.85% { transform: translateY(17px); } 41.20% { transform: translateY(34px); } 43.42% { transform: translateY(51px); } 45.64% { transform: translateY(68px); } 47.86% { transform: translateY(102px); } 50.08% { transform: translateY(119px); } 52.30% { transform: translateY(136px); } 54.52% { transform: translateY(153px); } 56.74% { transform: translateY(170px); } 58.95% { transform: translateY(187px); } 60.06% { transform: translateY(204px); } 61.17% { transform: translateY(221px); } 62.28% { transform: translateY(238px); } 63.39% { transform: translateY(255px); } 64.50% { transform: translateY(272px); } 65.61% { transform: translateY(289px); } 66.72% { transform: translateY(306px); } 67.83% { transform: translateY(323px); } 68.94% { transform: translateY(340px); } 70.05% { transform: translateY(357px); } 71.16% { transform: translateY(374px); } 72.27% { transform: translateY(391px); } 73.38% { transform: translateY(408px); } 74.48% { transform: translateY(425px); } 75.59% { transform: translateY(442px); } 76.70% { transform: translateY(459px); } 77.81% { transform: translateY(476px); } 78.92% { transform: translateY(493px); } 80.03% { transform: translateY(510px); } 81.14% { transform: translateY(527px); } 82.25% { transform: translateY(544px); } 84.47% { transform: translateY(561px); } 86.69% { transform: translateY(578px); } 88.91% { transform: translateY(595px); } 91.13% { transform: translateY(612px); } 93.34% { transform: translateY(629px); } 95.56% { transform: translateY(646px); } 97.78% { transform: translateY(663px); } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .p, .cur { animation: none; } }
+</style>
 <g transform="translate(28 22)">
 <rect width="856" height="711" rx="10" fill="#282c34" filter="url(#shadow)"/>
 <g clip-path="url(#win)">
@@ -15,45 +22,46 @@
 <text x="428.0" y="18.5" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#8b919c">demo_target — -zsh — 110×39</text>
 <rect x="847" y="334.8" width="5" height="123.0" rx="2.5" fill="#fff" fill-opacity="0.22"/>
 <g font-family="ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" fill="#abb2bf">
-<text x="14" y="50.5"><tspan fill="#98c379">✓</tspan> remediation proposed for 1 validated finding(s) <tspan fill="#707680">(advisory patch written; never auto-applied)</tspan></text>
-<text x="14" y="84.5"><tspan font-weight="700">  Results</tspan></text>
-<text x="14" y="101.5">   risk <tspan fill="#e06c75">100/100 Critical</tspan> · <tspan fill="#56b6c2">7</tspan> attack chain(s)<tspan fill="#707680">  (runtime-confirmed findings only)</tspan></text>
-<text x="14" y="118.5">   static exposure <tspan fill="#e5c07b">100/100 (Critical) from 13 unvalidated SAST/SCA/IaC finding(s) (7 high, 5 medium, 1 low), n</tspan></text>
-<text x="14" y="135.5"><tspan fill="#e5c07b">ot included in the aggregate risk score</tspan></text>
-<text x="14" y="152.5">   <tspan fill="#98c379">22</tspan> confirmed · <tspan fill="#707680">66 dropped by FP gate</tspan> · validation rate <tspan font-weight="700">22%</tspan></text>
-<text x="14" y="169.5">   <tspan fill="#56b6c2">13</tspan> static/SAST (4 source-correlated)</text>
-<text x="14" y="186.5">   <tspan fill="#e06c75">[CRITICAL]</tspan> OS command injection via 'host' on GET /api/ping <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
-<text x="14" y="203.5">   <tspan fill="#e06c75">[CRITICAL]</tspan> JWT accepted without signature verification (alg=none) on GET /api/me <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
-<text x="14" y="220.5">   <tspan fill="#e06c75">[CRITICAL]</tspan> Server-side template injection in 'name' on GET /api/greet <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
-<text x="14" y="237.5">   <tspan fill="#707680">· dropped: JWT accepted without signature verification (alg=none) on GET /api/orders/{id}</tspan></text>
-<text x="14" y="254.5">   <tspan fill="#707680">· dropped: JWT accepted without signature verification (alg=none) on GET /api/reports/orders</tspan></text>
-<text x="14" y="271.5">   <tspan fill="#707680">· dropped: JWT accepted without signature verification (alg=none) on GET /api/profile</tspan></text>
-<text x="14" y="288.5">   <tspan fill="#707680">· dropped: JWT accepted without signature verification (alg=none) on GET /api/v2/me</tspan></text>
-<text x="14" y="305.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'q' on GET /api/search</tspan></text>
-<text x="14" y="322.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'id' on GET /api/products</tspan></text>
-<text x="14" y="339.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'next' on GET /api/go</tspan></text>
-<text x="14" y="356.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'url' on GET /api/fetch</tspan></text>
-<text x="14" y="373.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'host' on GET /api/ping</tspan></text>
-<text x="14" y="390.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'name' on GET /api/file</tspan></text>
-<text x="14" y="407.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'item' on GET /api/checkout</tspan></text>
-<text x="14" y="424.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'qty' on GET /api/checkout</tspan></text>
-<text x="14" y="441.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'url' on GET /api/webhook</tspan></text>
-<text x="14" y="458.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'x' on GET /dom</tspan></text>
-<text x="14" y="475.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'email' on GET /api/reset</tspan></text>
-<text x="14" y="492.5">   <tspan fill="#707680">· dropped: OS command injection via 'next' on GET /api/go</tspan></text>
-<text x="14" y="509.5">   <tspan fill="#707680">· dropped: OS command injection via 'name' on GET /api/file</tspan></text>
-<text x="14" y="526.5">   <tspan fill="#707680">· dropped: OS command injection via 'id' on GET /api/products</tspan></text>
-<text x="14" y="543.5">   <tspan fill="#707680">· dropped: OS command injection via 'url' on GET /api/fetch</tspan></text>
-<text x="14" y="560.5">   <tspan fill="#707680">· dropped: OS command injection via 'name' on GET /api/greet</tspan></text>
-<text x="14" y="577.5">   <tspan fill="#707680">· dropped: OS command injection via 'q' on GET /api/search</tspan></text>
-<text x="14" y="594.5">   <tspan fill="#e06c75">[HIGH]</tspan> Overly permissive CORS policy (wildcard origin with credentials) <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
-<text x="14" y="611.5">   <tspan fill="#e06c75">[HIGH]</tspan> Exposed sensitive file: /.env <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
-<text x="14" y="628.5">   <tspan fill="#e06c75">[HIGH]</tspan> Exposed sensitive file: /.git/config <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
-<text x="14" y="645.5">   <tspan fill="#e06c75">[HIGH]</tspan> Exposed sensitive file: /backup.sql <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
-<text x="14" y="662.5">   <tspan fill="#e06c75">[HIGH]</tspan> SQL injection in 'id' on GET /api/products <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
-<text x="14" y="679.5">   <tspan fill="#e06c75">[HIGH]</tspan> IDOR/BOLA on GET /api/orders/{id} exposes other users' Orders <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
-<text x="14" y="696.5">   <tspan fill="#e06c75">[HIGH]</tspan> Broken function-level authorization on GET /api/reports/orders <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:0.5s" y="50.5"><tspan fill="#98c379">✓</tspan> remediation proposed for 1 validated finding(s) <tspan fill="#707680">(advisory patch written; never auto-applied)</tspan></text>
+<text x="14" class="p" style="animation-delay:1.37s" y="84.5"><tspan font-weight="700">  Results</tspan></text>
+<text x="14" class="p" style="animation-delay:1.44s" y="101.5">   risk <tspan fill="#e06c75">100/100 Critical</tspan> · <tspan fill="#56b6c2">7</tspan> attack chain(s)<tspan fill="#707680">  (runtime-confirmed findings only)</tspan></text>
+<text x="14" class="p" style="animation-delay:1.51s" y="118.5">   static exposure <tspan fill="#e5c07b">100/100 (Critical) from 13 unvalidated SAST/SCA/IaC finding(s) (7 high, 5 medium, 1 low), n</tspan></text>
+<text x="14" class="p" style="animation-delay:1.51s" y="135.5"><tspan fill="#e5c07b">ot included in the aggregate risk score</tspan></text>
+<text x="14" class="p" style="animation-delay:1.58s" y="152.5">   <tspan fill="#98c379">22</tspan> confirmed · <tspan fill="#707680">66 dropped by FP gate</tspan> · validation rate <tspan font-weight="700">22%</tspan></text>
+<text x="14" class="p" style="animation-delay:1.65s" y="169.5">   <tspan fill="#56b6c2">13</tspan> static/SAST (4 source-correlated)</text>
+<text x="14" class="p" style="animation-delay:1.72s" y="186.5">   <tspan fill="#e06c75">[CRITICAL]</tspan> OS command injection via 'host' on GET /api/ping <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:1.79s" y="203.5">   <tspan fill="#e06c75">[CRITICAL]</tspan> JWT accepted without signature verification (alg=none) on GET /api/me <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:1.86s" y="220.5">   <tspan fill="#e06c75">[CRITICAL]</tspan> Server-side template injection in 'name' on GET /api/greet <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:1.895s" y="237.5">   <tspan fill="#707680">· dropped: JWT accepted without signature verification (alg=none) on GET /api/orders/{id}</tspan></text>
+<text x="14" class="p" style="animation-delay:1.93s" y="254.5">   <tspan fill="#707680">· dropped: JWT accepted without signature verification (alg=none) on GET /api/reports/orders</tspan></text>
+<text x="14" class="p" style="animation-delay:1.965s" y="271.5">   <tspan fill="#707680">· dropped: JWT accepted without signature verification (alg=none) on GET /api/profile</tspan></text>
+<text x="14" class="p" style="animation-delay:2.0s" y="288.5">   <tspan fill="#707680">· dropped: JWT accepted without signature verification (alg=none) on GET /api/v2/me</tspan></text>
+<text x="14" class="p" style="animation-delay:2.035s" y="305.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'q' on GET /api/search</tspan></text>
+<text x="14" class="p" style="animation-delay:2.07s" y="322.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'id' on GET /api/products</tspan></text>
+<text x="14" class="p" style="animation-delay:2.105s" y="339.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'next' on GET /api/go</tspan></text>
+<text x="14" class="p" style="animation-delay:2.14s" y="356.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'url' on GET /api/fetch</tspan></text>
+<text x="14" class="p" style="animation-delay:2.175s" y="373.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'host' on GET /api/ping</tspan></text>
+<text x="14" class="p" style="animation-delay:2.21s" y="390.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'name' on GET /api/file</tspan></text>
+<text x="14" class="p" style="animation-delay:2.245s" y="407.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'item' on GET /api/checkout</tspan></text>
+<text x="14" class="p" style="animation-delay:2.28s" y="424.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'qty' on GET /api/checkout</tspan></text>
+<text x="14" class="p" style="animation-delay:2.315s" y="441.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'url' on GET /api/webhook</tspan></text>
+<text x="14" class="p" style="animation-delay:2.35s" y="458.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'x' on GET /dom</tspan></text>
+<text x="14" class="p" style="animation-delay:2.385s" y="475.5">   <tspan fill="#707680">· dropped: Server-side template injection in 'email' on GET /api/reset</tspan></text>
+<text x="14" class="p" style="animation-delay:2.42s" y="492.5">   <tspan fill="#707680">· dropped: OS command injection via 'next' on GET /api/go</tspan></text>
+<text x="14" class="p" style="animation-delay:2.455s" y="509.5">   <tspan fill="#707680">· dropped: OS command injection via 'name' on GET /api/file</tspan></text>
+<text x="14" class="p" style="animation-delay:2.49s" y="526.5">   <tspan fill="#707680">· dropped: OS command injection via 'id' on GET /api/products</tspan></text>
+<text x="14" class="p" style="animation-delay:2.525s" y="543.5">   <tspan fill="#707680">· dropped: OS command injection via 'url' on GET /api/fetch</tspan></text>
+<text x="14" class="p" style="animation-delay:2.56s" y="560.5">   <tspan fill="#707680">· dropped: OS command injection via 'name' on GET /api/greet</tspan></text>
+<text x="14" class="p" style="animation-delay:2.595s" y="577.5">   <tspan fill="#707680">· dropped: OS command injection via 'q' on GET /api/search</tspan></text>
+<text x="14" class="p" style="animation-delay:2.665s" y="594.5">   <tspan fill="#e06c75">[HIGH]</tspan> Overly permissive CORS policy (wildcard origin with credentials) <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:2.735s" y="611.5">   <tspan fill="#e06c75">[HIGH]</tspan> Exposed sensitive file: /.env <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:2.805s" y="628.5">   <tspan fill="#e06c75">[HIGH]</tspan> Exposed sensitive file: /.git/config <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:2.875s" y="645.5">   <tspan fill="#e06c75">[HIGH]</tspan> Exposed sensitive file: /backup.sql <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:2.945s" y="662.5">   <tspan fill="#e06c75">[HIGH]</tspan> SQL injection in 'id' on GET /api/products <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:3.015s" y="679.5">   <tspan fill="#e06c75">[HIGH]</tspan> IDOR/BOLA on GET /api/orders/{id} exposes other users' Orders <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
+<text x="14" class="p" style="animation-delay:3.085s" y="696.5">   <tspan fill="#e06c75">[HIGH]</tspan> Broken function-level authorization on GET /api/reports/orders <tspan fill="#98c379">✔ CONFIRMED</tspan></text>
 </g>
+<rect class="cur" x="14" y="39" width="7.52" height="15" fill="#abb2bf" opacity="0"/>
 </g>
 </g>
 </svg>

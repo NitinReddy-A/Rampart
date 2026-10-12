@@ -102,7 +102,9 @@ All notable changes to Rampart are documented here. The format follows
   `rampart test --repo . --deep` against the demo app, scrolled to the results (22 confirmed, 66
   dropped by the false-positive gate). It is rendered from a captured run by
   `scripts/render_terminal_svg.py`, which keeps the CLI's own colours and wraps lines the way a
-  terminal does, so the image can be regenerated whenever the output changes. The HTML-report
+  terminal does, so the image can be regenerated whenever the output changes. The rows print in
+  one at a time behind a block cursor and the final frame stays (static for
+  `prefers-reduced-motion`). The HTML-report
   screenshot moved to "Reports and compliance".
 - **README badges no longer depend on shields.io.** GitHub loads README images through its camo
   proxy, which gives up after ~4s, and shields' badges were regularly slower than that — the

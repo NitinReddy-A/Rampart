@@ -10,12 +10,14 @@ from the bundled demo app, not a mock-up. To regenerate it after the CLI output 
         --appmodel-seed appmodel_seed.json --secrets secrets.json --repo . --deep \\
         --report html,sarif > /tmp/rampart.ansi
     python scripts/render_terminal_svg.py /tmp/rampart.ansi docs/assets/rampart-console.svg \\
-        --from "  Results" --before 2 --rows 39
+        --from "  Results" --before 2 --rows 39 --animate
 
 The window shows a contiguous slice of the output, the way a terminal scrolled back to it would
 (`--from` is the first line that matches, `--before` lines of context above it, `--rows` screen
 rows after wrapping at `--cols`). Nothing is rewritten: every character comes from the capture.
-Stdlib only.
+With `--animate` the rows print in one at a time behind a block cursor, as the CLI writes them,
+then the final frame stays; without CSS animation (or with prefers-reduced-motion) the SVG is
+simply that final frame. Stdlib only.
 """
 
 from __future__ import annotations
@@ -47,6 +49,10 @@ LINE_H = 17
 PAD_X, PAD_Y = 14, 10
 TITLE_H = 28
 MARGIN = 28  # room for the window shadow
+
+# --animate pacing (seconds): when the first row prints, the gap between rows (dim rows, such as
+# dropped candidates, print faster), and the pause before a blank row (the CLI writing reports).
+START, STEP, STEP_DIM, PAUSE = 0.5, 0.07, 0.035, 0.8
 
 _SGR = re.compile(r"\x1b\[([0-9;]*)m")
 
@@ -107,8 +113,44 @@ def _tspan(text: str, style: dict) -> str:
     return f"<tspan{attrs}>{body}</tspan>" if attrs else body
 
 
-def render(screen, cols, title, total_rows, first_row, label) -> str:
+def schedule(screen) -> list[float]:
+    """When each row prints. Rows wrapped from one line print together, as a terminal shows them."""
+    times, t, prev = [], START, None
+    for i, (line, row) in enumerate(screen):
+        if i and line != prev:
+            text = "".join(x for x, _ in row).strip()
+            if not text:
+                t += PAUSE
+            else:
+                t += STEP_DIM if all(st.get("dim") for x, st in row if x.strip()) else STEP
+        times.append(round(t, 3))
+        prev = line
+    return times
+
+
+def _animation(screen, times) -> list[str]:
+    """CSS for --animate: each row is hidden until its print time; a block cursor marks the next row."""
+    end = times[-1] + STEP
+    frames = ["0% { transform: translateY(0px); opacity: 1; }"]
+    for r, t in enumerate(times):
+        if r + 1 < len(screen) and screen[r + 1][0] == screen[r][0]:
+            continue  # the cursor lands after the last row of a wrapped line
+        frames.append(f"{100 * t / end:.2f}% {{ transform: translateY({(r + 1) * LINE_H}px); }}")
+    frames.append("100% { opacity: 0; }")
+    return [
+        "<style>",
+        ".p { animation: p 1ms backwards; }",
+        "@keyframes p { from { opacity: 0; } }",
+        f".cur {{ animation: cur {end:.2f}s step-end forwards; }}",
+        "@keyframes cur { " + " ".join(frames) + " }",
+        "@media (prefers-reduced-motion: reduce) { .p, .cur { animation: none; } }",
+        "</style>",
+    ]
+
+
+def render(screen, cols, title, total_rows, first_row, label, animate=False) -> str:
     rows = len(screen)
+    times = schedule(screen) if animate else []
     win_w = round(PAD_X * 2 + cols * CHAR_W)
     win_h = TITLE_H + PAD_Y * 2 + rows * LINE_H
     w, h = win_w + MARGIN * 2, win_h + MARGIN * 2
@@ -121,6 +163,7 @@ def render(screen, cols, title, total_rows, first_row, label) -> str:
         '<feDropShadow dx="0" dy="8" stdDeviation="11" flood-color="#000" flood-opacity="0.35"/></filter>',
         f'<clipPath id="win"><rect width="{win_w}" height="{win_h}" rx="10"/></clipPath>',
         "</defs>",
+        *(_animation(screen, times) if animate else []),
         f'<g transform="translate({MARGIN} {MARGIN - 6})">',
         f'<rect width="{win_w}" height="{win_h}" rx="10" fill="{BG}" filter="url(#shadow)"/>',
         '<g clip-path="url(#win)">',
@@ -146,12 +189,21 @@ def render(screen, cols, title, total_rows, first_row, label) -> str:
         'fill="#fff" fill-opacity="0.22"/>'
     )
     out.append(f'<g font-family="{FONT}" font-size="{FONT_SIZE}" fill="{FG}">')
-    for r, row in enumerate(screen):
+    for r, (_line, row) in enumerate(screen):
         y = TITLE_H + PAD_Y + (r + 1) * LINE_H - 4.5
         body = "".join(_tspan(t, s) for t, s in row if t)
-        if body:
-            out.append(f'<text x="{PAD_X}" y="{y}">{body}</text>')
-    out += ["</g>", "</g>", "</g>", "</svg>"]
+        if not body:
+            continue
+        anim = f' class="p" style="animation-delay:{times[r]}s"' if animate else ""
+        out.append(f'<text x="{PAD_X}"{anim} y="{y}">{body}</text>')
+    out.append("</g>")
+    if animate:
+        # hidden unless animating, so a static render never shows a stray cursor
+        out.append(
+            f'<rect class="cur" x="{PAD_X}" y="{TITLE_H + PAD_Y + 1}" width="{CHAR_W:.2f}" '
+            f'height="{LINE_H - 2}" fill="{FG}" opacity="0"/>'
+        )
+    out += ["</g>", "</g>", "</svg>"]
     return "\n".join(out) + "\n"
 
 
@@ -165,6 +217,7 @@ def main(argv=None) -> int:
     ap.add_argument("--cols", type=int, default=110, help="screen columns")
     ap.add_argument("--title", default="demo_target — -zsh — {cols}×{rows}")
     ap.add_argument("--label", default="Rampart terminal output")
+    ap.add_argument("--animate", action="store_true", help="print the rows in one at a time")
     args = ap.parse_args(argv)
 
     with open(args.capture, encoding="utf-8") as fh:
@@ -172,11 +225,11 @@ def main(argv=None) -> int:
     plain = [_SGR.sub("", ln) for ln in lines]
     start = next(i for i, ln in enumerate(plain) if ln.startswith(args.start))
     start = max(0, start - args.before)
-    screen_rows = [row for ln in lines for row in wrap(parse(ln), args.cols)]
+    screen_rows = [(i, row) for i, ln in enumerate(lines) for row in wrap(parse(ln), args.cols)]
     first_row = sum(len(wrap(parse(ln), args.cols)) for ln in lines[:start])
     screen = screen_rows[first_row : first_row + args.rows]
     title = args.title.format(cols=args.cols, rows=args.rows)
-    svg = render(screen, args.cols, title, len(screen_rows), first_row, args.label)
+    svg = render(screen, args.cols, title, len(screen_rows), first_row, args.label, args.animate)
     with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(svg)
     print(f"{args.out}: rows {first_row}-{first_row + len(screen)} of {len(screen_rows)}")
