@@ -27,7 +27,9 @@ It reports only the vulnerabilities it can **prove**, with a reproducible exploi
 [FAQ](#faq) ·
 [Docs](#documentation)
 
-<img src="docs/assets/rampart-console.svg" alt="Rampart console during an authorized assessment of the demo app: 57 hypotheses tested by worker agents, each candidate re-derived by an independent validator — 21 confirmed with reproducible proof, 66 dropped by the false-positive gate, $0 LLM cost" width="900" />
+<img src="docs/assets/rampart-console.svg" alt="Terminal output of rampart test against the bundled demo app, scrolled to the results: 22 findings confirmed with reproducible proof, each candidate the independent validator could not reproduce listed as dropped (66 in all), then the confirmed CRITICAL and HIGH findings" width="900" />
+
+<sub>Unedited output of <code>rampart test --repo . --deep</code> against the bundled demo app, scrolled to the results.</sub>
 
 </div>
 

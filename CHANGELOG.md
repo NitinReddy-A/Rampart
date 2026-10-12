@@ -44,6 +44,15 @@ All notable changes to Rampart are documented here. The format follows
   and still fully subject to the policy pipeline (`active` writes still require policy approval).
 
 ### Fixed
+- **The weekly VAmPI corpus benchmark tests VAmPI.** It ran with no spec, accounts or seed, and a
+  crawl of VAmPI's JSON root finds no links, so Rampart mapped 0 endpoints and scored recall 0.
+  `benchmarks/vampi_setup.py` now populates VAmPI's database, creates a known book per test
+  account, and saves the live spec and the account secrets; the scope seeds VAmPI's `name1` /
+  `name2` users and excludes `/createdb` (a GET that drops the database mid-scan); and
+  `corpus_runner.py` takes `--login-path` / `--token-path`. The ground truth's BOLA moves to
+  `/books/v1/{book_title}`, where VAmPI documents it. Result: BOLA and excessive data exposure
+  confirmed, mass assignment tested but missed (VAmPI's register response does not echo the
+  injected field, so the canary oracle cannot prove it): recall 0.67.
 - **SARIF is accepted by GitHub code scanning.** A runtime finding put its endpoint URL
   (`http://host/path`) — or, for infra/TLS findings, a bare `host:443`, which parses as scheme
   `host` — straight into `artifactLocation.uri`, and code scanning rejects the *whole* upload when
@@ -89,10 +98,11 @@ All notable changes to Rampart are documented here. The format follows
 
 ### Changed
 - **New logo and README hero.** The logo is a crenellated rampart-shield with a terminal prompt
-  and a "proven"-green cursor. The README opens on an animated Rampart console replaying a real
-  `rampart test --deep --repo` run against the demo app: worker agents testing 57 hypotheses, an
-  independent validator confirming 21 with proof and dropping 66, the selected finding's evidence,
-  and the scope → report pipeline (static for `prefers-reduced-motion`). The HTML-report
+  and a "proven"-green cursor. The README opens on a terminal window showing the unedited output of
+  `rampart test --repo . --deep` against the demo app, scrolled to the results (22 confirmed, 66
+  dropped by the false-positive gate). It is rendered from a captured run by
+  `scripts/render_terminal_svg.py`, which keeps the CLI's own colours and wraps lines the way a
+  terminal does, so the image can be regenerated whenever the output changes. The HTML-report
   screenshot moved to "Reports and compliance".
 - **README badges no longer depend on shields.io.** GitHub loads README images through its camo
   proxy, which gives up after ~4s, and shields' badges were regularly slower than that — the
