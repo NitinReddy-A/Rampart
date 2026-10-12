@@ -21,13 +21,20 @@ Expected high-value hits: BOLA on vehicle/mechanic endpoints, mass assignment, J
 
 ## VAmPI (API — toggleable vulnerable/secure, like Rampart's own demo)
 ```bash
-git clone https://github.com/erev0s/VAmPI && cd VAmPI
-docker build -t vampi . && docker run -d -p 5000:5000 -e vulnerable=1 vampi   # vulnerable
+docker run -d -p 5000:5000 -e vulnerable=1 -e tokentimetolive=600 erev0s/vampi:latest   # vulnerable
 # re-run with -e vulnerable=0 for the secure build to measure false positives
+python benchmarks/vampi_setup.py --target http://127.0.0.1:5000 --out-dir .vampi   # DB, books, spec, secrets
 python -m rampart pipeline --scope-file benchmarks/fixtures/vampi-rampart.scope.yaml --target http://127.0.0.1:5000 \
+  --openapi .vampi/vampi-openapi.json --appmodel-seed benchmarks/fixtures/vampi-appmodel-seed.json \
+  --secrets .vampi/vampi-secrets.json --login-path /users/v1/login --token-path auth_token \
   --crawl --active --report html,sarif
 ```
 VAmPI's `vulnerable=1/0` switch mirrors Rampart's demo on/off design — ideal for FP/FN scoring.
+A fresh container has an empty database and random book titles, so run `vampi_setup.py` first:
+it populates the database, creates one known book per test account (the BOLA oracle's
+cross-account objects), and saves the live spec plus a secrets file for VAmPI's `name1` / `name2`
+users. The scope excludes `/createdb`, a GET that drops the database, so no probe can wipe the
+seeded data mid-scan.
 
 ## OWASP Juice Shop (web — XSS/SQLi/auth, heavy client-side)
 ```bash
@@ -48,7 +55,9 @@ python benchmarks/corpus_runner.py \
   --target http://127.0.0.1:5000 \
   --scope-file benchmarks/fixtures/vampi-rampart.scope.yaml \
   --ground-truth benchmarks/fixtures/vampi-ground-truth.json \
-  --crawl --runs 5 --min-recall 0.5 --out vampi-report.json
+  --openapi .vampi/vampi-openapi.json --appmodel-seed benchmarks/fixtures/vampi-appmodel-seed.json \
+  --secrets .vampi/vampi-secrets.json --login-path /users/v1/login --token-path auth_token \
+  --crawl --active --runs 5 --min-recall 0.5 --out vampi-report.json
 ```
 
 It emits, as JSON:

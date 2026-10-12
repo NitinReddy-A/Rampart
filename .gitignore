@@ -6,6 +6,7 @@ benchmarks/results.json
 # Secrets — never commit real credentials (the demo file is toy creds for a local target)
 secrets.json
 !examples/demo_target/secrets.json
+.vampi/
 
 # Python
 __pycache__/
