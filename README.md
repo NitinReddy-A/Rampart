@@ -439,6 +439,20 @@ Run `rampart tools` to see which external scanners are installed.
 
 ## How it works
 
+Point Rampart at an app you're allowed to test. It maps the surface, forms a hypothesis for every
+place a bug could hide, and then has to **prove** each one from a clean state before it earns a line
+in the report. Scope goes in; a proven report comes out.
+
+<div align="center">
+<img src="docs/assets/iso-flow.svg" alt="Isometric view of the scan: a scope block, then the app model, then the one amber admission gate every request crosses, then the prove stage (an unproven candidate is dropped, a reproved one is confirmed), then the report" width="880" />
+<br />
+<sub>Each stage is gated. The amber <b>gate</b> is the single admission choke-point every request crosses, and only the <b>prove</b> stage — an independent oracle — may mark a finding <b>confirmed</b>. What it can't reprove is dropped.</sub>
+</div>
+
+<br />
+
+The same flow with its exact fail-closed semantics:
+
 ```mermaid
 flowchart TD
     S([rampart.scope.yaml]):::doc --> G{Authorization gate}:::gate
@@ -484,7 +498,17 @@ Two rules make the results trustworthy:
    deterministic code, never an LLM, and it re-derives the result from scratch with a negative
    control. LLM-reasoned issues that can't be proven are labelled `agent-assessed`.
 
-Code layout and internals: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+## Architecture at a glance
+
+Rampart is built in layers. Every way of running it — the CLI, the Python SDK, the MCP server, the
+GitHub Action — enters through **one engagement** and produces identical results, and every layer
+rests on a **safety core** that no scanner, agent, or model output can route around.
+
+<div align="center">
+<img src="docs/assets/iso-layers.svg" alt="Isometric stack of Rampart's layers: surfaces on top, then the engagement facade, discover and confirm, the checks, reason and report, all resting on the safety core at the bottom, with every request passing down into that core" width="560" />
+<br />
+<sub>Surfaces call one façade; the checks and reporting sit above the load-bearing safety core (scope, policy pipeline, audit, evidence, executor). Full map: <a href="docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a>.</sub>
+</div>
 
 ## Bring your own LLM (optional)
 
@@ -553,6 +577,12 @@ A separate weekly job scores Rampart against the external
 > [Limitations](#limitations), and we track them openly.
 
 ## Safety model
+
+<div align="center">
+<img src="docs/assets/iso-choke.svg" alt="Isometric view: the crawler, oracles, logins, and the browser, gRPC and infra engines all converge through one admission gate before reaching the target; an out-of-scope request bounces off the gate" width="560" />
+<br />
+<sub>One gate, no side doors. Every engine reaches your target through the same admission contract — scope, resolved-IP, risk tier, budget, audit — fail-closed. An out-of-scope request bounces off.</sub>
+</div>
 
 - **Authorization gate.** No valid, unexpired, in-scope `rampart.scope.yaml` with an accountable owner means no run.
 - **One admission contract on every egress.** HTTP requests (crawler, oracles, test-account logins) are checked against the scope's host, port, and canonicalised path, and the *resolved* IP to stop DNS rebinding, by the policy pipeline. The headless browser, gRPC, and infra engines open their own connections but enforce that same scope + *resolved*-IP allowlist themselves and route every connection through a shared admission guard (`rampart/infra/sidechannel.py`) that applies the same budget, kill-switch, and tamper-evident audit — all fail-closed.
