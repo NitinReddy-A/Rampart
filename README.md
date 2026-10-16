@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="Rampart" width="88" />
+<img src="docs/assets/rampart-mark.svg" alt="Rampart" width="88" />
 
 # Rampart
 

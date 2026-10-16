@@ -127,8 +127,8 @@ All notable changes to Rampart are documented here. The format follows
   control and dropped, instead of being reported as an exposed file.
 
 ### Changed
-- **New logo and README hero.** The logo is a crenellated rampart-shield with a terminal prompt
-  and a "proven"-green cursor. The README opens on a terminal window showing the unedited output of
+- **New logo and README hero.** The logo is the top of a tower, four merlons on a wall, drawn
+  isometrically in blue and green on a dark tile, so it reads on light and dark themes. The README opens on a terminal window showing the unedited output of
   `rampart test --repo . --deep` against the demo app, scrolled to the results (22 confirmed, 66
   dropped by the false-positive gate). It is rendered from a captured run by
   `scripts/render_terminal_svg.py`, which keeps the CLI's own colours and wraps lines the way a
