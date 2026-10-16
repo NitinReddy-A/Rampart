@@ -10,6 +10,7 @@ never be confirmed (fail-closed).
 
 from __future__ import annotations
 
+import ast
 import http.client
 
 from ..executor.session import SessionError
@@ -17,6 +18,33 @@ from ..runner import ProbeRunner
 from ..schemas.finding import Finding, State, Verification
 from ..util import now_iso
 from .registry import get_oracle
+
+
+def _request_line(stored: str) -> tuple[str, str]:
+    """('GET /path?k=v', session) from a stored http_request evidence blob (see
+    EvidenceStore.put_request); ('', '') if it doesn't look like one."""
+    lines = stored.splitlines()
+    if not lines or " HTTP/" not in lines[0]:
+        return "", ""
+    method, path = lines[0].split(" ")[:2]
+    session, query, body = "", {}, ""
+    for i, line in enumerate(lines[1:], start=1):
+        if line.startswith("(session: "):
+            value = line[len("(session: ") :].split(",", 1)[0].strip()
+            session = "" if value in ("None", "") else value
+        elif line.startswith("Query: "):
+            parsed = ast.literal_eval(line[len("Query: ") :])
+            if isinstance(parsed, dict):
+                query = parsed
+        elif line == "" and i + 1 < len(lines):
+            body = "\n".join(lines[i + 1 :]).strip()
+            break
+    out = f"{method} {path}"
+    if query:
+        out += "?" + "&".join(f"{k}={v}" for k, v in query.items())
+    if body:
+        out += f" with body {body[:160]}{'…' if len(body) > 160 else ''}"
+    return out, session
 
 
 class Validator:
@@ -64,6 +92,7 @@ class Validator:
         finding.evidence.extend(verdict.evidence)
 
         if verdict.validated:
+            self._concrete_reproduction(finding, verdict.evidence, verdict.reproductions)
             finding.state = State.VALIDATED
             finding.confidence = "confirmed"
             finding.status = "open"
@@ -94,6 +123,49 @@ class Validator:
             )
         finding.assert_consistent()
         return verdict.validated
+
+    # ----------------------------------------------------------- reproduction
+    def _concrete_reproduction(self, finding: Finding, evidence: list, reproductions: int) -> None:
+        """Replace the worker's generic steps with the requests the oracle actually sent: the
+        probe, the benign control, and where the exact exchange is stored. Best effort: any
+        problem reading the evidence leaves the generic steps in place."""
+        try:
+            reqs = [e for e in evidence if getattr(e, "type", "") == "http_request"]
+            if not reqs or self.evidence is None:
+                return
+            is_control = lambda e: any(
+                w in (e.summary or "").lower() for w in ("control", "baseline", "negative")
+            )  # noqa: E731
+            probe = next((e for e in reqs if not is_control(e)), None)
+            control = next((e for e in reqs if is_control(e)), None)
+            if probe is None:
+                return
+            p_line, p_session = _request_line(self.evidence.read(probe.storage_uri))
+            if not p_line:
+                return
+            original = (finding.reproduction.steps or [""])[0]
+            if "?" not in p_line and " with body " not in p_line and original.startswith("Send "):
+                # what the probe changed isn't in the request line (a forged header, a different
+                # principal), so keep the worker's description of it
+                p_line = original[len("Send ") :]
+            steps = [f"Send the probe: {p_line}"]
+            if control is not None:
+                c_line, _ = _request_line(self.evidence.read(control.storage_uri))
+                if c_line:
+                    steps.append(f"Send the benign control: {c_line}; the oracle signal must be absent")
+            steps.append(
+                f"Repeat from a clean state: the oracle reproduced the signal {reproductions} time(s) "
+                "with fresh values each run"
+            )
+            refs = ", ".join(e.storage_uri for e in (probe, control) if e is not None)
+            steps.append(f"The exact requests and responses are in the evidence store: {refs}")
+            finding.reproduction.steps = steps
+            if p_session:
+                finding.reproduction.prerequisites = [
+                    f"Authenticated as the scope's test account '{p_session}'"
+                ]
+        except (OSError, ValueError, SyntaxError, AttributeError):
+            return
 
     def retest(self, finding: Finding, hyp: dict, reproductions: int = 2) -> str:
         """Replay the stored reproduction against the (possibly patched) target.

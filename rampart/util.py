@@ -47,6 +47,15 @@ def canonical_json(obj: Any) -> str:
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), default=str)
 
 
+def endpoint_key(hyp: dict) -> tuple:
+    """``(METHOD, path)`` of the endpoint a hypothesis targets. Escalated hypotheses carry no
+    ``endpoint_id``, so method + path is the one key every hypothesis has."""
+    path = str(hyp.get("endpoint_path") or "")
+    if path:
+        return (str(hyp.get("endpoint_method") or "").upper(), path)
+    return ("", str(hyp.get("endpoint_id") or ""))
+
+
 def sha256_hex(data: str | bytes) -> str:
     if isinstance(data, str):
         data = data.encode("utf-8")

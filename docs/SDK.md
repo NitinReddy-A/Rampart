@@ -21,7 +21,8 @@ r = Rampart(
 result = r.scan()
 
 print(result.summary())
-# -> "7 confirmed (2 high, 4 medium, 1 low), 1 agent-assessed, 4 dropped by the false-positive gate"
+# against the bundled demo app with its spec, seed and test accounts (secrets="secrets.json"):
+# -> "22 confirmed (3 critical, 9 high, 9 medium, 1 low), 45 dropped by the false-positive gate"
 
 for f in result.confirmed:
     print(f.severity, f.title)
@@ -59,9 +60,12 @@ Because the result is just data, a security gate is one assertion:
 
 ```python
 def test_staging_has_no_high_severity_bugs():
-    result = Rampart(scope="rampart.scope.yaml", target="https://staging.internal").scan()
+    result = Rampart(scope="rampart.scope.yaml", target="https://staging.internal", openapi="openapi.json").scan()
     assert not result.failed(on="high"), result.summary()
 ```
+
+Give the scan something to test: `openapi=` (every endpoint and parameter) or `crawl=True`. With
+only a scope and a target, it runs the built-in misconfiguration checks and nothing else.
 
 ## Running everything
 

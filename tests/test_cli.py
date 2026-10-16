@@ -517,7 +517,9 @@ def test_retest_exit_codes(tmp_path, vuln_server, capsys):
         ["retest", "--scope-file", scope_file, "--work-dir", str(work), "--report", "json"], capsys
     )
     assert rc == 1, out
-    assert "target (from stored run)" in out and "still-vulnerable" in out and "not retestable" in out
+    assert "target (from stored run)" in out and "still-vulnerable" in out
+    # misconfiguration findings are re-checked now, not reported as "not retestable"
+    assert "not retestable" not in out
     # the target goes away -> inconclusive (never a traceback) -> exit 2
     down = _free_port()
     down_dir = tmp_path / "down"

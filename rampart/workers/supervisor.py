@@ -22,7 +22,7 @@ from ..orchestration import (
 from ..runner import ProbeRunner
 from ..scanners import misconfig_checks, security_headers_check, sensitive_files_check
 from ..schemas.finding import State
-from ..util import gen_id, now_iso
+from ..util import endpoint_key, gen_id, now_iso
 from .test_worker import BolaIdorWorker
 from .web_worker import WEB_CLASSES, WebWorker
 
@@ -33,6 +33,7 @@ class ScanResult:
     hypotheses: list = field(default_factory=list)
     phase_log: list = field(default_factory=list)
     endpoints_tested: int = 0
+    tested_endpoints: set = field(default_factory=set, repr=False)
     classes_tested: list = field(default_factory=list)
     scanner_runs: list = field(default_factory=list)
     plan: dict = field(default_factory=dict)
@@ -304,7 +305,9 @@ class Supervisor:
 
         validated: list = []
         for h in hyps:
-            result.endpoints_tested += 1
+            # count distinct endpoints, not hypotheses: several classes hit the same endpoint
+            result.tested_endpoints.add(endpoint_key(h))
+            result.endpoints_tested = len(result.tested_endpoints)
             task = graph.tasks.get(h.pop("_task_id", ""))
             if task is None or task.status == "error":
                 h["status"] = "error"

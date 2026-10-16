@@ -512,6 +512,22 @@ WEB_CLASS_META = {
 
 WEB_CLASSES = set(WEB_CLASS_META)
 
+# What the probe changes, for classes that don't inject through a named parameter.
+_PROBE_HINTS = {
+    "BFLA": "as a low-privilege user, then unauthenticated, and compare the responses",
+    "EXCESSIVE_DATA": "as the owning user and inspect the fields the response returns",
+    "JWT": "with an unsigned token (alg=none) in the Authorization header",
+    "HOST_HEADER_INJECTION": "with an attacker-controlled Host header",
+    "MASS_ASSIGNMENT": "with an extra privileged field added to the request body",
+    "GRAPHQL": "with an introspection query",
+}
+
+
+def _probe_hint(vuln_class: str, param: str) -> str:
+    if vuln_class in _PROBE_HINTS:
+        return _PROBE_HINTS[vuln_class]
+    return f"with a crafted '{param}' value" if param else "with a crafted request"
+
 
 class WebWorker:
     """One worker for the reflected-XSS / SQLi / open-redirect family (by hypothesis class)."""
@@ -561,11 +577,13 @@ class WebWorker:
             description=meta["description"].format(**fmt),
             impact=meta["impact"],
             root_cause=meta["root_cause"],
+            # Generic until the validator confirms it; then the steps are rewritten from the
+            # recorded probe and control requests (Validator._concrete_reproduction).
             reproduction=Reproduction(
                 prerequisites=["None (unauthenticated request)"],
                 steps=[
-                    f"Send {method} {path} with a crafted '{param}' value",
-                    "Observe the deterministic oracle signal (see proof below)",
+                    f"Send {method} {path} {_probe_hint(hyp['vuln_class'], param)}",
+                    "Observe the deterministic oracle signal (see the verification checks for this finding)",
                 ],
                 deterministic=True,
             ),

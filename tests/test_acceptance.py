@@ -121,10 +121,13 @@ def test_a7_retest_flips_to_fixed(tmp_path, vuln_server, fixed_server):
     results = eng_fixed.retest()
     outcomes = {f.vuln_class: o for f, o in results if f.vuln_class == "IDOR/BOLA"}
     assert outcomes.get("IDOR/BOLA") == "Fixed"
-    # every oracle-replayable finding is Fixed on the patched build; the rest are reported
-    # as "not retestable" (misconfig / sensitive-file / static) rather than silently skipped
+    # every oracle-replayable finding is Fixed on the patched build, and so are the
+    # misconfiguration / sensitive-file findings, re-checked by their built-in check; anything
+    # else is reported as "not retestable" rather than silently skipped
     print(sorted({(f.vuln_class, o) for f, o in results}))
     assert {o for _f, o in results} <= {"Fixed", Engagement.NOT_RETESTABLE}
+    rechecked = {o for f, o in results if f.vuln_class in Engagement.RECHECKABLE}
+    assert rechecked == {"Fixed"}, rechecked
 
 
 # A8 — false-positive gate: nothing confirmed against a secure target

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass
 from urllib.parse import urlparse, urlsplit
 
@@ -594,8 +595,14 @@ class Engagement:
         )
 
     def _correlate_sast_dast(self, findings):
-        """Link runtime-confirmed DAST findings to a source location sharing the CWE —
-        'proven at runtime AND located in source' is the highest-confidence result."""
+        """Link a runtime-confirmed finding to the source sink that most plausibly served it —
+        'proven at runtime AND located in source' is the highest-confidence result.
+
+        A shared CWE alone is not enough: the same CWE can appear anywhere in a repo. A sink is
+        linked only when its code also carries evidence of the endpoint: the route literal in
+        its file, or the endpoint's parameter or path name in the enclosing function. The
+        strongest-evidenced sink wins, and the reason is recorded; with no evidence the runtime
+        finding stays uncorrelated rather than pointing at an unrelated line."""
         sast = [f for f in findings if "sast" in f.tags and f.affected_code]
         if not sast:
             return
@@ -606,20 +613,76 @@ class Engagement:
         for f in findings:
             if "sast" in f.tags or not f.verification.validated:
                 continue
+            best, best_score, best_why, best_cwe = None, 0, [], ""
             for c in f.cwe:
-                match = by_cwe.get(c)
-                if not match:
-                    continue
-                s = match[0]
-                if not (f.affected_code and getattr(f.affected_code, "file", "")):
-                    f.affected_code = s.affected_code
-                if "source-correlated" not in f.tags:
-                    f.tags.append("source-correlated")
-                    f.verification.false_positive_checks.append(
-                        f"source-correlated: same {c} located at {s.affected_code.file}:"
-                        f"{s.affected_code.start_line} (confirmed at runtime AND present in source)"
-                    )
-                break
+                for s in by_cwe.get(c, []):
+                    score, why = self._sink_evidence(f, s)
+                    if score > best_score:
+                        best, best_score, best_why, best_cwe = s, score, why, c
+            if best is None:
+                continue
+            if not (f.affected_code and getattr(f.affected_code, "file", "")):
+                f.affected_code = best.affected_code
+            if "source-correlated" not in f.tags:
+                f.tags.append("source-correlated")
+                f.verification.false_positive_checks.append(
+                    f"source-correlated: {best_cwe} sink at {best.affected_code.file}:"
+                    f"{best.affected_code.start_line} matches this endpoint by {', '.join(best_why)} "
+                    "(confirmed at runtime AND located in source)"
+                )
+
+    # Path segments and parameter names too common to tie a sink to one endpoint.
+    _GENERIC_TOKENS = frozenset(
+        {"api", "v1", "v2", "v3", "id", "ids", "q", "x", "get", "post", "app", "index", "data", "www", "rest"}
+    )
+
+    def _sink_evidence(self, f, s) -> tuple[int, list]:
+        """(score, reasons) that the SAST sink ``s`` is the code behind runtime finding ``f``."""
+
+        def tokens(text: str) -> set:
+            parts = re.split(r"[^A-Za-z0-9]+", re.sub(r"([a-z])([A-Z])", r"\1_\2", text or ""))
+            return {p.lower() for p in parts if p}
+
+        endpoint = f.endpoint or {}
+        try:
+            path = urlsplit(endpoint.get("url") or "").path
+        except ValueError:
+            path = ""
+        params = {
+            str(p.get("name") or "").lower()
+            for p in endpoint.get("parameters") or []
+            if isinstance(p, dict) and str(p.get("name") or "").lower() not in self._GENERIC_TOKENS
+        }
+        segments = {t for t in tokens(re.sub(r"\{[^}]*\}", "", path)) if t not in self._GENERIC_TOKENS}
+
+        code = s.affected_code
+        context, file_text = getattr(code, "snippet", "") or "", ""
+        repo = getattr(self.cfg, "repo", "") or ""
+        try:
+            with open(os.path.join(repo, code.file), encoding="utf-8", errors="replace") as fh:
+                file_text = fh.read()
+            lines = file_text.splitlines()
+            end = max(0, min(len(lines), int(code.start_line or 0)))
+            start = end - 1
+            # walk back to the enclosing function so its name and parameters count as context
+            while start > 0 and end - start < 60 and not re.match(r"\s*(async\s+)?def\s", lines[start]):
+                start -= 1
+            context = "\n".join(lines[max(0, start) : end + 1])
+        except (OSError, ValueError, TypeError):
+            pass
+
+        score, why = 0, []
+        if path and file_text and re.search(r"[\"']" + re.escape(path) + r"[\"'/]", file_text):
+            score += 2
+            why.append(f"route '{path}' in the file")
+        ctx = tokens(context)
+        for p in sorted(params & ctx):
+            score += 1
+            why.append(f"parameter '{p}'")
+        for t in sorted((segments - params) & ctx):
+            score += 1
+            why.append(f"name '{t}'")
+        return score, why
 
     # ------------------------------------------------------- correlation
     def _correlate(self, findings):
@@ -1261,7 +1324,7 @@ class Engagement:
             phase_log.append({"phase": "scan", "msg": f"INCOMPLETE: {status.incomplete_reason}"})
         summary = {
             "correlation": corr_dict,
-            "endpoints_tested": len(res.probe_log),
+            "endpoints_tested": 1 if res.probe_log else 0,  # one chat endpoint, however many probes
             "hypotheses": [],
             "classes_tested": ["LLM"],
             "llm_probe_log": res.probe_log,
@@ -1292,12 +1355,73 @@ class Engagement:
 
     # ------------------------------------------------------------- retest
     NOT_RETESTABLE = "not retestable (re-run a scan)"
+    # Observation-tier classes: no hypothesis to replay, but the built-in check that found them
+    # can simply run again — the observation IS the oracle.
+    RECHECKABLE = frozenset({"security-misconfiguration", "sensitive-file-exposure"})
+
+    def _recheck_observations(self):
+        """Run the built-in misconfiguration, header and sensitive-file checks once against the
+        target. Returns the ``{(dedupe_key, vuln_class)}`` they still report, or a string saying
+        why the answer can't be trusted (target down or unhealthy)."""
+        from .executor.session import SessionError
+        from .runner import ProbeRunner
+        from .scanners import misconfig_checks, security_headers_check, sensitive_files_check
+
+        runner = ProbeRunner(
+            self.pipeline,
+            self.evidence,
+            self.pipeline.engagement_id,
+            self.host,
+            self.port,
+            self.scheme,
+            actor_role="validator",
+            actor_profile="retest-misconfig",
+            phase="retest",
+        )
+        out = runner.get(
+            "/",
+            session=None,
+            payload_class="benign-read",
+            rationale="retest baseline: is the target healthy enough for 'Fixed' to mean anything?",
+            capture=False,
+            summary="retest baseline",
+        )
+        if not out.executed:
+            return f"baseline GET / not executed ({out.blocked_reason or 'blocked'})"
+        if out.status is None or int(out.status) >= 500:
+            return f"baseline GET / -> HTTP {out.status} (target unhealthy; 'Fixed' cannot be trusted)"
+        app = self.cfg.application
+        appmodel = self.store.load_appmodel() or self.appmodel
+        try:
+            found = security_headers_check(runner, "/", self.target_url, app)
+            found += misconfig_checks(runner, appmodel, self.target_url, app, self.sessions)
+            found += sensitive_files_check(runner, self.target_url, app)
+        except (OSError, SessionError) as exc:
+            return f"{type(exc).__name__}: {exc}"
+        return {(f.dedupe_key, f.vuln_class) for f in found if f.verification.validated}
+
+    def _observation_outcome(self, f, still) -> str:
+        """Apply a re-check result to one observation-tier finding, as the validator does."""
+        from .schemas.finding import State
+        from .util import now_iso
+
+        if isinstance(still, str):
+            f.verification.last_retest = {"result": "inconclusive", "at": now_iso(), "reason": still}
+            return "inconclusive"
+        if (f.dedupe_key, f.vuln_class) in still:
+            regressed = f.state == State.FIXED
+            f.verification.last_retest = {"result": "still-vulnerable", "at": now_iso()}
+            if regressed:
+                f.state, f.status = State.REGRESSION, "open"
+                return "Regression"
+            return "still-vulnerable"
+        f.verification.last_retest = {"result": "fixed", "at": now_iso()}
+        f.state, f.status = State.FIXED, "fixed"
+        return "Fixed"
 
     def _retest_baseline(self, f, hyp) -> str:
         """Health control for a "Fixed" verdict: a benign GET of the finding's endpoint must be
         executed and answered without a 5xx. Returns "" when healthy, else why it is not."""
-        import re
-
         from .runner import ProbeRunner
 
         path = str(hyp.get("endpoint_path") or "")
@@ -1341,22 +1465,30 @@ class Engagement:
     def retest(self):
         """Replay EVERY validated finding that has a stored hypothesis + a registered oracle
         through the validator's class-agnostic retest, against the (possibly patched) target.
+        Misconfiguration and sensitive-file findings (no hypothesis: the observation is the
+        oracle) are re-checked by running their built-in check once more.
 
         Returns ``[(finding, outcome)]`` where outcome is ``"Fixed"``, ``"still-vulnerable"``,
         ``"Regression"``, ``"inconclusive"`` (the target could not give a meaningful answer — the
-        finding's state is left unchanged) or :attr:`NOT_RETESTABLE` (misconfiguration,
-        sensitive-file, static/SAST, external and browser findings have no oracle-replayable
-        hypothesis; re-run a scan to re-check them). Never raises on a network/session error."""
+        finding's state is left unchanged) or :attr:`NOT_RETESTABLE` (static/SAST, external,
+        browser and other stage-only findings have nothing replayable; re-run a scan to re-check
+        them). Never raises on a network/session error."""
         from .executor.session import SessionError
         from .validation.registry import get_oracle
 
         findings = self.store.load_findings()
         hyps = {h.get("finding_id"): h for h in self.store.load_hypotheses() if h.get("finding_id")}
         results = []
+        still = None  # observation re-check, run at most once and only if something needs it
         for f in findings:
             if not is_validated(f) or is_dropped(f):
                 continue
             hyp = hyps.get(f.id)
+            if hyp is None and f.vuln_class in self.RECHECKABLE:
+                if still is None:
+                    still = self._recheck_observations()
+                results.append((f, self._observation_outcome(f, still)))
+                continue
             if hyp is None or get_oracle(f.vuln_class) is None:
                 results.append((f, self.NOT_RETESTABLE))
                 continue

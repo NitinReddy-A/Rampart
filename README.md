@@ -29,7 +29,7 @@ It reports only the vulnerabilities it can **prove**, with a reproducible exploi
 
 <img src="docs/assets/rampart-console.svg" alt="Terminal output of rampart test against the bundled demo app, scrolled to the results: 22 findings confirmed with reproducible proof, each candidate the independent validator could not reproduce listed as dropped (66 in all), then the confirmed CRITICAL and HIGH findings" width="900" />
 
-<sub>Unedited output of <code>rampart test --repo . --deep</code> against the bundled demo app, scrolled to the results.</sub>
+<sub>Unedited output of <code>rampart test --repo . --deep</code> against the bundled demo app, scrolled to the results. <code>--deep</code> is on <code>main</code> and not yet in the v1.2.0 release.</sub>
 
 </div>
 
@@ -38,7 +38,8 @@ It reports only the vulnerabilities it can **prove**, with a reproducible exploi
 ## What is Rampart?
 
 Rampart is a security scanner that behaves like a careful pentester. You point it at an app you're
-allowed to test. It maps the endpoints, tries dozens of attack classes, and then **re-proves every
+allowed to test. It maps the endpoints, tries 14 oracle-validated attack classes plus built-in
+misconfiguration checks, and then **re-proves every
 hit from a clean state** before calling it a finding. Anything it can't reproduce is thrown out and
 shown in the report, so you can see the noise it filtered for you.
 
@@ -94,7 +95,7 @@ The demo starts the target, runs a full assessment, and opens an HTML report:
     [  HIGH] SQL injection in 'q' on GET /api/search  (Dropped)
     [MEDIUM] Reflected cross-site scripting (XSS) in 'id' on GET /api/products  (Dropped)
     ...
-  audit chain: intact · 409 events · cost $0.0
+  audit chain: intact · 476 events · cost $0.0
 ```
 
 On the bundled target that's **22 confirmed findings, 45 candidates dropped** by the
@@ -241,7 +242,7 @@ rampart api      --target … --openapi …      # API-focused, grey-box
 rampart sast     --repo .                    # source + secrets (offline; never contacts a target)
 rampart sca      --repo . --sca-online       # dependencies vs OSV.dev, EPSS, CISA KEV
 rampart iac      --repo .                    # Terraform, CloudFormation, Kubernetes, Dockerfile
-rampart llm-test --target … --chat-path /chat       # OWASP LLM Top 10 probes (4 categories: LLM01/05/07/02)
+rampart llm-test --target … --chat-path /chat --canary …   # OWASP LLM Top 10 probes (4 categories: LLM01/05/07/02)
 rampart retest   --work-dir .rampart         # replay confirmed findings against a patched build
 rampart features                             # list every capability and how to run it
 ```
@@ -251,13 +252,19 @@ rampart features                             # list every capability and how to 
 **Go deeper on what it finds.** Add `--deep` and a *confirmed* finding drives the scan harder,
 the way an assessor would: the other injection classes on a parameter proven to be a live sink,
 sibling endpoints that return an object type proven to have a broken ownership check. Every
-follow-up is re-proven by the same independent oracle, so `--deep` finds *more*, never noisier.
-The fan-out is deterministic and hard-capped (depth, total, and per-finding), with duplicates
-removed, so it can't run away — the counts admitted and dropped are in the report.
+follow-up is re-proven by the same independent oracle, so `--deep` can only add *proven*
+findings, never noise. The fan-out is deterministic and hard-capped (depth, total, and
+per-finding), with duplicates removed, so it can't run away — the counts admitted and dropped are
+in the report. On the bundled demo app its 21 follow-ups were all re-tested and correctly dropped
+(the demo's other parameters aren't vulnerable), and 27 more were cut by the caps.
 
 ```bash
 rampart pipeline --target … --scope-file … --deep     # the full, result-driven deep scan
 ```
+
+> [!NOTE]
+> `--deep` is on `main` and not in the v1.2.0 release yet. Until the next release, install from
+> source (`pip install -e .` in a clone) or `pipx install git+https://github.com/NitinReddy-A/Rampart.git`.
 
 **In CI**, gate the build with `--ci --fail-on high` (confirmed runtime findings) and, optionally,
 `--fail-on-static high` (source, dependency, and IaC findings, which are evidence-backed but not
@@ -277,9 +284,15 @@ accident.
 ```python
 from rampart import Rampart
 
-result = Rampart(scope="rampart.scope.yaml", target="https://staging.acme.internal").scan()
+result = Rampart(
+    scope="rampart.scope.yaml",
+    target="https://staging.acme.internal",
+    openapi="openapi.json",  # or crawl=True; with neither, only the built-in misconfiguration checks run
+).scan()
 
-print(result.summary())  # "7 confirmed (2 high, 4 medium, 1 low), 4 dropped by the false-positive gate"
+print(result.summary())
+# on the bundled demo app (grey-box, with its seed and test accounts):
+# "22 confirmed (3 critical, 9 high, 9 medium, 1 low), 45 dropped by the false-positive gate"
 for finding in result.confirmed:
     print(finding.severity, finding.title)
 
@@ -290,7 +303,7 @@ A security gate is one assertion in your test suite:
 
 ```python
 def test_staging_has_no_high_severity_vulnerabilities():
-    result = Rampart(scope="rampart.scope.yaml", target=STAGING_URL).scan()
+    result = Rampart(scope="rampart.scope.yaml", target=STAGING_URL, openapi="openapi.json").scan()
     assert not result.failed(on="high"), result.summary()
 ```
 

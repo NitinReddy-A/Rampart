@@ -31,7 +31,9 @@ class EvidenceStore:
             # temp file then atomically replace, so two threads racing on the same digest can
             # never leave a torn/half-written blob (os.replace is atomic on POSIX and Windows).
             tmp = f"{path}.{_secrets.token_hex(4)}.tmp"
-            with open(tmp, "w", encoding="utf-8") as fh:
+            # newline="": write the exact bytes that were hashed. Text mode would turn LF into
+            # CRLF on Windows, so the blob would no longer match its own sha256 file name.
+            with open(tmp, "w", encoding="utf-8", newline="") as fh:
                 fh.write(content)
             try:
                 os.replace(tmp, path)
@@ -84,5 +86,6 @@ class EvidenceStore:
     def read(self, uri_or_digest: str) -> str:
         digest = uri_or_digest.replace("evidence://", "")
         path = os.path.join(self.base_dir, digest[:2], digest)
-        with open(path, encoding="utf-8") as fh:
+        # newline="": return the stored text unchanged (a CRLF inside a captured body stays as is)
+        with open(path, encoding="utf-8", newline="") as fh:
             return fh.read()

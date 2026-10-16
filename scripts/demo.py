@@ -54,22 +54,34 @@ def _llm_scope(port):
     import tempfile
 
     tmp = tempfile.mkdtemp(prefix="rampart-llm-demo-")
+    # Block-style YAML only: the strict built-in parser (used when PyYAML is absent, as in a
+    # plain `pip install -e .`) refuses multi-line flow mappings rather than guess at them.
     scope = f"""apiVersion: security-agent/v1
 kind: EngagementScope
-authorization: {{owner: you@localhost, authorized_by: you@localhost, ticket: LLM-DEMO,
-  attestation: "I own this local LLM target.", expires: "2099-12-31T23:59:59Z"}}
+authorization:
+  owner: "you@localhost"
+  authorized_by: "you@localhost"
+  ticket: "LLM-DEMO"
+  attestation: "I own this local LLM target."
+  expires: "2099-12-31T23:59:59Z"
 scope:
   in_scope:
     - host: "127.0.0.1"
       ports: [{port}]
       paths_include: ["/chat", "/"]
       methods: ["GET", "POST"]
-  out_of_scope: {{paths_exclude: [], hosts_exclude: []}}
+  out_of_scope:
+    paths_exclude: []
+    hosts_exclude: []
   resolved_ip_allowlist: ["127.0.0.1/32"]
-limits: {{max_requests_per_host_per_min: 500, max_total_requests: 5000}}
-action_policy: {{default_tier_ceiling: 1, tier2_requires_approval: true, tier3: deny}}
+limits:
+  max_requests_per_host_per_min: 500
+  max_total_requests: 5000
+action_policy:
+  default_tier_ceiling: 1
+  tier2_requires_approval: true
+  tier3: deny
 test_accounts: []
-notify: {{}}
 """
     path = os.path.join(tmp, "rampart.scope.yaml")
     open(path, "w", encoding="utf-8").write(scope)

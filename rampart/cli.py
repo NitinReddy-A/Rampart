@@ -83,7 +83,13 @@ def _banner():
 
 
 def _err(msg) -> None:
-    print(red(f"✗ {_clean(msg)}"))
+    # Clean each line separately: a multi-line error (a scope with several problems) keeps its
+    # line breaks instead of collapsing into one run-on line, while control characters inside
+    # any line are still neutralised.
+    first, *rest = str(msg if msg is not None else "").splitlines() or [""]
+    print(red(f"✗ {_clean(first)}"))
+    for line in rest:
+        print(red(f"  {_clean(line)}"))
 
 
 # ------------------------------------------------------------------ severities / formats
@@ -330,18 +336,23 @@ def cmd_init(args):
             print(red(f"   - {_clean(e)}"))
         return 2
     print(green("✓ scope contract is valid — engagement may run"))
-    print(f"  owner:        {scope.authorization.owner}")
-    print(f"  authorized by:{scope.authorization.authorized_by}")
-    print(f"  ticket:       {scope.authorization.ticket}")
-    print(f"  expires:      {scope.authorization.expires}")
+
+    def row(label, value):
+        print(f"  {label + ':':<16}{value}")
+
+    row("owner", scope.authorization.owner)
+    row("authorized by", scope.authorization.authorized_by)
+    row("ticket", scope.authorization.ticket)
+    row("expires", scope.authorization.expires)
     for hs in scope.in_scope:
-        print(f"  in-scope:     {hs.host}:{hs.ports} {hs.methods} paths={hs.paths_include}")
-    print(f"  resolved-IPs: {scope.resolved_ip_allowlist}")
-    print(
-        f"  tier ceiling: {scope.action_policy.default_tier_ceiling} "
-        f"(Tier2 approval={scope.action_policy.tier2_requires_approval}, Tier3=deny)"
+        row("in-scope", f"{hs.host}:{hs.ports} {hs.methods} paths={hs.paths_include}")
+    row("resolved-IPs", scope.resolved_ip_allowlist)
+    row(
+        "tier ceiling",
+        f"{scope.action_policy.default_tier_ceiling} "
+        f"(Tier2 approval={scope.action_policy.tier2_requires_approval}, Tier3=deny)",
     )
-    print(f"  test accounts:{[a.id for a in scope.test_accounts]}")
+    row("test accounts", [a.id for a in scope.test_accounts])
     return 0
 
 
@@ -453,7 +464,7 @@ def cmd_test(args, parser=None, mode=None):
         )
 
     written, rb, chain_ok = eng.report(formats)
-    _print_summary(rb, chain_ok, eng)
+    _print_summary(rb, chain_ok, eng, offline=offline)
     for fmt, path in written.items():
         print(f"  {fmt:>10}: {path}")
     _notify(eng)
@@ -512,7 +523,7 @@ def _static_at_or_above(rb, severity) -> list:
     ]
 
 
-def _print_summary(rb, chain_ok, eng):
+def _print_summary(rb, chain_ok, eng, offline=False):
     m = rb.metrics()
     vr = f"{m['finding_validation_rate'] * 100:.0f}%"
     dropped_txt = f"{m['dropped_candidates']} dropped by FP gate"
@@ -536,8 +547,10 @@ def _print_summary(rb, chain_ok, eng):
     print(f"   {green(str(m['confirmed']))} confirmed · {dim(dropped_txt)} · validation rate {bold(vr)}")
     extra = []
     if m.get("static_findings"):
+        # source-code findings only (SAST + secrets); IaC and dependency findings are counted
+        # in the static-exposure line above
         sc = f" ({m['source_correlated']} source-correlated)" if m.get("source_correlated") else ""
-        extra.append(f"{cyan(str(m['static_findings']))} static/SAST{sc}")
+        extra.append(f"{cyan(str(m['static_findings']))} SAST/secrets{sc}")
     if m.get("agent_assessed"):
         extra.append(f"{cyan(str(m['agent_assessed']))} agent-assessed")
     if extra:
@@ -578,6 +591,13 @@ def _print_summary(rb, chain_ok, eng):
             )
         )
     _ok, msg, n_events = eng.audit_status()
+    if offline and n_events == 0:
+        # a white-box run sends nothing, so there is nothing to chain: say so, not "no events"
+        print(
+            dim(f"   audit chain: not applicable (white-box run, no requests sent) · cost ${m['usd_spent']}")
+        )
+        print()
+        return
     if chain_ok:
         ac = green("intact")
     elif n_events == 0:
@@ -747,9 +767,11 @@ def cmd_features(args):
         ("report", "Regenerate reports (html/md/json/sarif/compliance/soc2)", "rampart report --format soc2"),
     ]
     print(bold("\n  Rampart capabilities (run any in isolation, or `pipeline` for all)\n"))
+    width = max(len(name) for name, _d, _e in rows)
     for name, desc, example in rows:
-        print(f"   {cyan(name):<12} {desc}")
-        print(dim(f"                {example}"))
+        # pad before colouring: padding a coloured string counts the escape codes as width
+        print(f"   {cyan(name.ljust(width))}  {desc}")
+        print(dim(f"   {'':<{width}}  {example}"))
     print(
         dim(
             "\n  Every example reads ./rampart.scope.yaml (pass --scope-file to use another contract); the "

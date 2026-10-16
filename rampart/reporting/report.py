@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 
 from ..schemas.finding import State
+from ..util import endpoint_key
 from ..version import __version__
 from .mdsafe import md, md_code, md_fence, md_join
 from .status import (
@@ -144,6 +145,15 @@ class ReportBuilder:
         self.audit_events = audit_events
 
     # ------------------------------------------------------------ metrics
+    def _endpoints_tested(self) -> int:
+        """Distinct endpoints the oracles tested. Derived from the stored hypotheses when present,
+        so a report regenerated from an older run (which counted hypotheses) is right too."""
+        scan = self.scan or {}
+        hyps = [h for h in scan.get("hypotheses") or [] if isinstance(h, dict)]
+        if hyps:
+            return len({endpoint_key(h) for h in hyps})
+        return int(scan.get("endpoints_tested") or 0)
+
     def metrics(self) -> dict:
         confirmed = [f for f in self.findings if is_confirmed(f)]
         fixed = [f for f in self.findings if is_fixed(f)]
@@ -182,7 +192,7 @@ class ReportBuilder:
             "by_severity": by_sev,
             "by_class": by_class,
             "finding_validation_rate": round(val_rate, 3),
-            "endpoints_tested": (self.scan or {}).get("endpoints_tested", 0),
+            "endpoints_tested": self._endpoints_tested(),
             "endpoints_discovered": len(self.appmodel.endpoints) if self.appmodel else 0,
             "classes_tested": (self.scan or {}).get("classes_tested", []),
             "hypotheses": len((self.scan or {}).get("hypotheses", [])),
@@ -441,11 +451,15 @@ class ReportBuilder:
                     f"No open vulnerabilities remain confirmed: {m['fixed']} previously confirmed "
                     "finding(s) were verified fixed by retest."
                 )
-            else:
+            elif m.get("dropped_candidates"):
+                n = m["dropped_candidates"]
                 text = (
-                    "No vulnerabilities were confirmed. Every candidate was dropped by the "
+                    f"No vulnerabilities were confirmed. All {n} candidate(s) were dropped by the "
                     "independent validation gate, so there are no false positives to triage."
                 )
+            else:
+                # recon-only or white-box runs test nothing at runtime: don't claim a gate ran
+                text = "No vulnerabilities were confirmed, and no runtime candidates were tested in this run."
             if m.get("static_unvalidated"):
                 text += f" Static analysis exposure: {self._static_risk_text(m)}."
             return text

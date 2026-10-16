@@ -44,6 +44,36 @@ All notable changes to Rampart are documented here. The format follows
   and still fully subject to the policy pipeline (`active` writes still require policy approval).
 
 ### Fixed
+- **Evidence blobs hash to their own names on Windows.** The evidence store wrote in text mode, so
+  every LF became CRLF on disk and an external `sha256sum` of a blob no longer matched its
+  content-addressed file name. Blobs are now written and read byte-exact (`newline=""`).
+- **Source correlation needs evidence, not just a shared CWE.** A runtime finding was linked to the
+  first SAST hit with the same CWE anywhere in the repo, so a confirmed command injection on
+  `/api/ping` could point at an unrelated line (and SARIF reported that location). A sink is now
+  linked only when its code ties it to the endpoint (the route literal in its file, or the
+  endpoint's parameter or path name in the enclosing function); the best-evidenced sink wins and
+  the reason is recorded. With no evidence the finding stays uncorrelated.
+- **Reproduction steps are the requests the oracle actually sent.** Confirmed findings used to
+  carry generic steps ("Send GET /api/me with a crafted '' value … see proof below"). The
+  validator now rewrites them from the recorded evidence: the exact probe, the benign control,
+  the reproduction count and the evidence references. Parameter-less classes (JWT, BFLA, Host
+  header, mass assignment, GraphQL) get an accurate description before validation too.
+- **`retest` re-checks misconfiguration and exposed-file findings.** They have no replayable
+  hypothesis, so they were reported "not retestable". `retest` now runs the built-in header,
+  misconfiguration and sensitive-file checks once more and marks each finding `Fixed`,
+  `still-vulnerable`, `Regression` or `inconclusive` (target down or unhealthy).
+- **"Endpoints tested" counts endpoints.** The report tile and SDK metric counted hypotheses (the
+  demo showed `79/22`); they now count distinct endpoints, including for reports regenerated from
+  an older run. An LLM scan counts its one chat endpoint, not its probes.
+- **`python scripts/demo.py --llm` works without PyYAML.** The demo wrote its scope as a multi-line
+  flow mapping, which the strict built-in parser refuses, so the LLM demo crashed on a plain
+  `pip install -e .`. The scope is now block-style YAML.
+- **CLI output.** Multi-line refusals (an expired or invalid scope) keep their line breaks; `init`
+  aligns its labels (`authorized by:` had no space); `features` columns line up on a colour
+  terminal; the summary's source-code count is labelled `SAST/secrets` so it no longer reads as a
+  contradiction of the static-exposure total; white-box runs say the audit chain is not
+  applicable instead of a warning-coloured "no events"; and a run that tested nothing no longer
+  claims "every candidate was dropped".
 - **The weekly VAmPI corpus benchmark tests VAmPI.** It ran with no spec, accounts or seed, and a
   crawl of VAmPI's JSON root finds no links, so Rampart mapped 0 endpoints and scored recall 0.
   `benchmarks/vampi_setup.py` now populates VAmPI's database, creates a known book per test
@@ -124,10 +154,6 @@ All notable changes to Rampart are documented here. The format follows
   admission contract enforced at every egress point** (the HTTP policy pipeline, plus a shared
   admission guard for the browser/gRPC/infra engines that open their own connections).
 
-This release comes out of a full end-to-end review: seven parallel reviewers tested every
-surface against live targets and reproduced each issue before it was fixed. Every fix has a
-regression test (the suite grew from 197 to 661 tests).
-
 ### Security
 - **Scope glob matching can no longer be made to hang (ReDoS).** Path globs (`paths_include` /
   `paths_exclude`) and host globs (`hosts_exclude`) were compiled to `.*` / `[^/]*` regexes, which
@@ -147,6 +173,14 @@ regression test (the suite grew from 197 to 661 tests).
 - **Continuous fuzzing.** A new CI job runs coverage-guided Atheris fuzzers (`fuzz/`) against the
   scope-contract parser and gate matchers (must fail closed on any input) and the SARIF location
   builder (must stay a relative, scheme-less uri-reference).
+
+## [1.2.0] — 2026-10-09
+
+This release comes out of a full end-to-end review: seven parallel reviewers tested every
+surface against live targets and reproduced each issue before it was fixed. Every fix has a
+regression test (the suite grew from 197 to 661 tests).
+
+### Security
 - **Scope enforcement now covers every path out.** The target's port and scheme are checked at
   startup (previously only the host was). Test-account logins, the headless browser, the
   infrastructure scan, and gRPC now go through the same scope checks and audit log as every other

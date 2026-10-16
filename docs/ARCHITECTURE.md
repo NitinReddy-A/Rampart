@@ -121,8 +121,11 @@ Not every finding is equal, and Rampart never pretends otherwise:
 3. **external-scanner-lead** — an adapter (Nuclei, etc.) reported it; unvalidated.
 4. **static** (SAST/SCA/IaC) — present in source/config; not proven at runtime.
 
-A runtime-`confirmed` finding whose CWE also appears in source gets tagged *source-correlated* —
-the strongest signal, "proven at runtime **and** located in code."
+A runtime-`confirmed` finding is tagged *source-correlated* when a source sink with the same CWE
+is also tied to its endpoint by the code itself — the route literal in the sink's file, or the
+endpoint's parameter or path name in the enclosing function — and the reason is recorded. That
+is the strongest signal, "proven at runtime **and** located in code." A shared CWE alone is not
+enough, so an unrelated line elsewhere in the repo is never claimed.
 
 ## Dependencies
 

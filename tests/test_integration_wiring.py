@@ -398,7 +398,8 @@ def test_retest_network_error_is_inconclusive(tmp_path, monkeypatch):
 
     monkeypatch.setattr(eng.validator, "retest", boom)
     out = {fd.vuln_class: o for fd, o in eng.retest()}
-    assert out == {"SQLI": "inconclusive", "security-misconfiguration": Engagement.NOT_RETESTABLE}
+    # nothing listens on the port: the misconfiguration re-check can't get an answer either
+    assert out == {"SQLI": "inconclusive", "security-misconfiguration": "inconclusive"}
 
 
 # ------------------------------------------------------------------ 14. white-box notes / offline
