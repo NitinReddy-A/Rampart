@@ -60,7 +60,9 @@ Because the result is just data, a security gate is one assertion:
 
 ```python
 def test_staging_has_no_high_severity_bugs():
-    result = Rampart(scope="rampart.scope.yaml", target="https://staging.internal", openapi="openapi.json").scan()
+    result = Rampart(
+        scope="rampart.scope.yaml", target="https://staging.internal", openapi="openapi.json"
+    ).scan()
     assert not result.failed(on="high"), result.summary()
 ```
 
