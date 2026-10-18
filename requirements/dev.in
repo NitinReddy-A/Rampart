@@ -3,5 +3,5 @@
 # `pip install -e ".[dev]"` route in CONTRIBUTING.md installs the same tools unpinned.
 pytest
 ruff==0.17.0
-pre-commit>=4.7.0
+pre-commit>=4.6.2
 PyYAML>=6.0.3   # optional: scope parsing via PyYAML (a strict built-in parser is used otherwise)
