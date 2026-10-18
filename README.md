@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="docs/assets/rampart-mark.svg" alt="Rampart" width="88" />
+<img src="docs/assets/rampart-mark.svg" alt="Rampart" width="96" />
 
 # Rampart
 
-**Find it. Prove it. Fix it.**
+### Find it. Prove it. Fix it.
 
 The open-source, self-hosted security agent for web apps, APIs, and LLM endpoints.<br />
-It reports only the vulnerabilities it can **prove**, with a reproducible exploit for each one.
+It reports only the vulnerabilities it can **prove**, each with the evidence to reproduce it.
 
 [![CI](https://github.com/NitinReddy-A/Rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/NitinReddy-A/Rampart/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/NitinReddy-A/Rampart/actions/workflows/codeql.yml/badge.svg)](https://github.com/NitinReddy-A/Rampart/actions/workflows/codeql.yml)
@@ -19,11 +19,11 @@ It reports only the vulnerabilities it can **prove**, with a reproducible exploi
 [![Benchmark](docs/assets/badges/benchmark.svg)](#benchmark)
 [![License](docs/assets/badges/license.svg)](LICENSE)
 
-[Quickstart](#quickstart) ·
-[Scan your app](#scan-your-own-app) ·
-[Integrations](#ways-to-use-rampart) ·
-[What it tests](#what-it-tests) ·
+**[Try it in 60 seconds](#try-it-in-60-seconds)** ·
 [How it works](#how-it-works) ·
+[What it tests](#what-it-tests) ·
+[Scan your app](#scan-your-own-app) ·
+[Use it anywhere](#use-it-anywhere) ·
 [FAQ](#faq) ·
 [Docs](#documentation)
 
@@ -33,49 +33,45 @@ It reports only the vulnerabilities it can **prove**, with a reproducible exploi
 
 </div>
 
----
+<br />
 
-## What is Rampart?
+<table>
+<tr>
+<td width="33%" valign="top">
 
-Rampart is a security scanner that behaves like a careful pentester. You point it at an app you're
-allowed to test. It maps the endpoints, tries 14 oracle-validated attack classes plus built-in
-misconfiguration checks, and then **re-proves every
-hit from a clean state** before calling it a finding. Anything it can't reproduce is thrown out and
-shown in the report, so you can see the noise it filtered for you.
+### 🔬 It proves, then reports
 
-It runs on your machine or in your CI, it has **zero runtime dependencies** (pure standard-library
-Python), and an LLM is **optional**. With no LLM it's free, offline, and deterministic.
+A hit is only a *candidate*. An independent oracle re-proves it from a clean state, with a negative control and two reproductions, before it becomes a finding. The oracle is deterministic code, never an LLM.
 
-**Who it's for**
+</td>
+<td width="33%" valign="top">
 
-- **Developers** who want a security gate in CI that doesn't cry wolf.
-- **AppSec teams** who need evidence, not a 400-row spreadsheet of "possible" issues.
-- **Pentesters** who want the repetitive 80% automated and audited, so they can spend time on the hard 20%.
-- **Teams preparing for an audit** (SOC 2, ISO 27001, PCI DSS, and others) who need control evidence mapped to findings.
+### 🗑️ It shows what it threw away
+
+Candidates the oracle couldn't reproduce are dropped **and listed**, so you can see the noise Rampart filtered out instead of trusting that it did.
+
+</td>
+<td width="33%" valign="top">
+
+### 🧱 It stays inside the lines
+
+No valid, unexpired scope contract, no request. Every request crosses one admission gate, and every action lands in a tamper-evident audit log.
+
+</td>
+</tr>
+</table>
+
+Runs on your machine or in your CI · **zero runtime dependencies** (pure standard-library Python) · **no LLM required**: free, offline and deterministic by default.
 
 > [!IMPORTANT]
 > Rampart is for **authorized testing only**: assets you own or have written permission to test.
 > It enforces this. It won't send a single request without a valid, unexpired scope contract that
 > covers the target.
 
-## Why Rampart
+## Try it in 60 seconds
 
-| | Typical scanner | Hosted "AI pentest" service | **Rampart** |
-| --- | :---: | :---: | :---: |
-| Every finding re-proved by an independent oracle | ✗ | varies | **✓** |
-| False positives shown, not just hidden | ✗ | ✗ | **✓** |
-| Runs fully on your infrastructure | ✓ | ✗ | **✓** |
-| Works with no LLM (free, offline, reproducible) | ✓ | ✗ | **✓** |
-| Optional LLM reasoning (Claude Code, OpenAI-compatible, Ollama) | ✗ | ✓ | **✓** |
-| Hard scope enforcement on every request | partial | varies | **✓** |
-| Tamper-evident audit log of everything it did | ✗ | varies | **✓** |
-| Findings mapped to 8 compliance frameworks | rarely | varies | **✓** |
-| Open source, Apache-2.0 | some | ✗ | **✓** |
-
-## Quickstart
-
-**See it work in about a minute.** Rampart ships an intentionally vulnerable demo app. Everything
-runs on `127.0.0.1` and nothing touches the internet.
+Rampart ships an intentionally vulnerable demo app. Everything runs on `127.0.0.1`, and nothing
+touches the internet.
 
 ```bash
 git clone https://github.com/NitinReddy-A/Rampart.git
@@ -98,16 +94,154 @@ The demo starts the target, runs a full assessment, and opens an HTML report:
   audit chain: intact · 476 events · cost $0.0
 ```
 
-On the bundled target that's **22 confirmed findings, 45 candidates dropped** by the
-false-positive gate, and 7 multi-step attack chains.
+**22 confirmed findings, 45 candidates dropped, 7 multi-step attack chains.** The **Dropped** rows
+are the point: broad enumeration also guessed SQLi on `q` and XSS on `id`, the oracle couldn't
+reproduce them, so they're discarded. Run `python scripts/demo.py --fixed` against the patched
+build and Rampart confirms nothing at all.
 
-The **Dropped** rows are the point. Broad enumeration also guessed SQLi on `q` and XSS on `id`;
-the independent oracle couldn't reproduce them, so they're discarded. Run the same scan against the
-patched build (`python benchmarks/run_benchmark.py`) and Rampart confirms nothing at all.
+## Why Rampart
+
+Application security usually forces a bad trade. Scanners are cheap and self-hosted but bury you in
+unvalidated "possible" issues. Hosted AI-pentest services prove what they find, but your code and
+targets go to a vendor. Rampart takes the third path.
+
+| | Typical scanner | Hosted "AI pentest" service | **Rampart** |
+| --- | :---: | :---: | :---: |
+| Every finding re-proved by an independent oracle | ✗ | varies | **✓** |
+| False positives shown, not just hidden | ✗ | ✗ | **✓** |
+| Runs fully on your infrastructure | ✓ | ✗ | **✓** |
+| Works with no LLM (free, offline, reproducible) | ✓ | ✗ | **✓** |
+| Optional LLM reasoning (Claude Code, OpenAI-compatible, Ollama) | ✗ | ✓ | **✓** |
+| Hard scope enforcement on every request | partial | varies | **✓** |
+| Tamper-evident audit log of everything it did | ✗ | varies | **✓** |
+| Findings mapped to 8 compliance frameworks | rarely | varies | **✓** |
+| Open source, Apache-2.0 | some | ✗ | **✓** |
+
+**Built for**
+
+| | |
+| --- | --- |
+| **Developers** | a security gate in CI that doesn't cry wolf |
+| **AppSec teams** | evidence, not a 400-row spreadsheet of "possible" issues |
+| **Pentesters** | the repetitive 80% automated and audited, so you can spend time on the hard 20% |
+| **Audit prep** | control evidence for SOC 2, ISO 27001, PCI DSS and five more frameworks, mapped to findings |
+
+## How it works
+
+Scope goes in; a proven report comes out. Each stage is gated, and only the **prove** stage may mark
+a finding confirmed.
+
+<div align="center">
+<img src="docs/assets/iso-flow.svg" alt="Isometric view of the scan: a scope block, then the app model, then the one amber admission gate every request crosses, then the prove stage (an unproven candidate is dropped, a reproved one is confirmed), then the report" width="880" />
+</div>
+
+| | Stage | What happens |
+| :---: | --- | --- |
+| **1** | **Scope** | A short YAML contract says who owns the target, who authorized the test, what's in scope, and when the permission expires. No valid contract, no run. |
+| **2** | **Map** | Rampart builds a model of the app: endpoints and parameters from crawling, an OpenAPI spec, a headless browser, test accounts, and object ownership. |
+| **3** | **Hypothesize** | For every endpoint and parameter it proposes the attack classes that could apply. Deterministic rules by default; an LLM may suggest more. |
+| **4** | **Prove** | Each candidate goes to an independent oracle: the probe, a benign negative control, and the same signal reproduced twice from a clean state. Otherwise it's dropped. |
+| **5** | **Report** | Confirmed findings with CWE, CVSS 4.0 and compliance mappings, the exact requests that prove them, attack chains, and an advisory patch, never applied for you. |
+
+<details>
+<summary><b>The exact flow, with every fail-closed edge</b></summary>
+
+<br />
+
+```mermaid
+flowchart TD
+    S([rampart.scope.yaml]):::doc --> G{Authorization gate}:::gate
+    G -- invalid / out of scope --> X([Refuse to run]):::stop
+    G -- valid --> M[Build the app model]:::step
+    M --> H[Generate hypotheses]:::step
+    H --> P{{Policy pipeline}}:::choke
+    P -- denied --> B([Blocked &amp; audited]):::stop
+    P -- allowed --> T[(Your target)]:::target
+    T --> O{Independent oracle}:::gate
+    O -- re-proven --> C([Confirmed finding]):::good
+    O -- not re-proven --> D([Dropped]):::drop
+    C -->|"with --deep"| H
+    C --> R[Correlate, score, report]:::step
+
+    classDef doc stroke:#94a3b8,stroke-width:1.5px
+    classDef step stroke:#3b82f6,stroke-width:1.5px
+    classDef gate stroke:#eab308,stroke-width:2px
+    classDef choke stroke:#ef4444,stroke-width:3px
+    classDef target stroke:#38bdf8,stroke-width:2px
+    classDef good stroke:#22c55e,stroke-width:2px
+    classDef drop stroke:#78716c,stroke-width:1.5px,stroke-dasharray:5 3
+    classDef stop stroke:#ef4444,stroke-width:1.5px,stroke-dasharray:5 3
+```
+
+<sub>Amber diamonds are decision gates · the red hexagon is the **one admission choke-point** every
+request passes (scope · resolved-IP · risk tier · budget · audit) · dashed red = fail-closed ·
+green = oracle-proven · the `--deep` arrow is finding-driven escalation. Full detail:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).</sub>
+
+</details>
+
+Two rules make the results trustworthy:
+
+1. **One admission contract, enforced at every egress point.** Every HTTP probe goes through one
+   choke-point, the policy pipeline (`rampart/policy/pipeline.py`): scope, resolved-IP allowlist,
+   risk tier, policy, and budget are checked on each request, fail-closed. The engines that open
+   their own connections (headless browser, gRPC, infra) check the same scope and resolved-IP
+   allowlist themselves and go through a shared admission guard (`rampart/infra/sidechannel.py`)
+   with the same budget, kill switch, and audit. No agent, scanner, or LLM output can route around
+   it; a prompt-injected model can at most propose requests the policy engine rejects.
+2. **Nothing is "confirmed" without independent proof.** The oracle that confirms a finding is
+   deterministic code, never an LLM, and it re-derives the result from scratch with a negative
+   control. LLM-reasoned issues that can't be proven are labelled `agent-assessed`.
+
+<details>
+<summary><b>Architecture at a glance</b></summary>
+
+<br />
+
+Every way of running Rampart (CLI, Python SDK, MCP server, GitHub Action) enters through **one
+engagement** and produces identical results, and every layer rests on a **safety core** that no
+scanner, agent, or model output can route around.
+
+<div align="center">
+<img src="docs/assets/iso-layers.svg" alt="Isometric stack of Rampart's layers: surfaces on top, then the engagement facade, discover and confirm, the checks, reason and report, all resting on the safety core at the bottom, with every request passing down into that core" width="560" />
+</div>
+
+Full map: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+</details>
+
+## What it tests
+
+Most runtime classes have an independent oracle (a probe, a negative control, and 2+ reproductions
+from a clean state) before anything is called *confirmed*. Two honest exceptions: out-of-band blind
+SSRF/XXE and gRPC server reflection confirm on one reproduction plus a negative control, and the
+misconfiguration, security-header, and sensitive-file checks are single observations re-checked on a
+second request. Every class's evidence tier is in [docs/COVERAGE.md](docs/COVERAGE.md). The built-in
+checks need no external tools.
+
+| Area | Checks | Turn on with |
+| --- | --- | --- |
+| **Web & API** | IDOR/BOLA, broken function-level authz, SQL injection, XSS, SSTI, SSRF, OS command injection, path traversal, open redirect, host-header injection, JWT `alg=none`, excessive data exposure, mass assignment, GraphQL introspection | default (`--active` for write probes) |
+| **Misconfiguration** | security headers, permissive CORS, cookie flags, clickjacking, exposed files (`.env`, `.git`, backups), version disclosure | default |
+| **Deep auth** | weak JWT signing secrets, expiry not enforced | `--authz` |
+| **API depth** | HTTP verb tampering, GraphQL depth abuse | `--api-scan` |
+| **Business logic** | price, quantity, and parameter tampering | `--bizlogic` |
+| **Blind bugs** | blind SSRF and XXE via a self-hosted out-of-band collaborator | `--oob` |
+| **Browser** | JS/SPA route discovery (DOM + fetch/XHR), DOM and stored XSS in real headless Chromium | `--browser` |
+| **gRPC** | reflection exposure, plaintext transport, unauthenticated RPCs | `--grpc` |
+| **Infrastructure** | exposed services on in-scope hosts | `--infra` |
+| **Source code** | Python AST source scanner, hard-coded secrets | `--repo` |
+| **Infrastructure as code** | Terraform, CloudFormation, Kubernetes, Dockerfile | `--iac` |
+| **Dependencies (SCA)** | OSV.dev matches, ranked by EPSS, CISA KEV, and call-graph reachability | `--sca-online` |
+| **LLM apps** | OWASP LLM Top 10 probes for 4 of the risk categories: LLM01 prompt injection + jailbreak, LLM05 improper output handling, LLM07/LLM02 system-prompt and sensitive-info leakage | `rampart llm-test` |
+| **External tools** | Nuclei, Nmap, Semgrep, Trivy, testssl.sh, imported as *unvalidated leads* | `--scanners` |
+
+Run `rampart features` for every capability and how to run it, and `rampart tools` to see which
+external scanners are installed.
 
 ## Install
 
-Pick whichever fits your workflow. All of them run the same engine.
+Every method runs the same engine. Requires **Python 3.10+**.
 
 | Method | Command |
 | --- | --- |
@@ -116,10 +250,15 @@ Pick whichever fits your workflow. All of them run the same engine.
 | **Docker** | `docker pull ghcr.io/nitinreddy-a/rampart:1.2.0` |
 | **From source** | `git clone https://github.com/NitinReddy-A/Rampart.git && pip install -e ".[dev]"` |
 
-The release wheel URL needs no git and works in slim CI images. Every release is listed on the
+The release wheel URL needs no git and works in slim CI images. Every release is on the
 [Releases](https://github.com/NitinReddy-A/Rampart/releases/latest) page.
 
-Requires **Python 3.10+**. Optional extras add features but never change the core:
+<details>
+<summary><b>Optional extras</b></summary>
+
+<br />
+
+Extras add features but never change the core:
 
 ```bash
 pip install "rampart-appsec[browser] @ https://github.com/NitinReddy-A/Rampart/releases/download/v1.2.0/rampart_appsec-1.2.0-py3-none-any.whl"
@@ -133,7 +272,12 @@ python -m playwright install chromium    # DOM / stored XSS in a real headless b
 | `grpc` | gRPC reflection and per-RPC checks |
 | `all` | everything above |
 
-### Verifying a release
+</details>
+
+<details>
+<summary><b>Verifying a release</b></summary>
+
+<br />
 
 Every release is built by this repository's [release workflow](.github/workflows/release.yml), not
 on anyone's laptop, and published as an [immutable release](https://docs.github.com/repositories/releasing-projects-on-github/about-releases)
@@ -148,11 +292,13 @@ gh attestation verify rampart_appsec-1.2.0-py3-none-any.whl --repo NitinReddy-A/
 gh attestation verify oci://ghcr.io/nitinreddy-a/rampart:1.2.0 --repo NitinReddy-A/Rampart
 ```
 
+</details>
+
 ## Scan your own app
 
-Three steps: write a scope contract, validate it, run the scan.
+Three steps: describe what you're allowed to test, check it, scan.
 
-**1. Describe what you're allowed to test.** Copy the example contract and fill it in:
+**1 · Write the scope contract.** Copy the example and fill it in:
 
 ```bash
 curl -fsSLo rampart.scope.yaml \
@@ -175,13 +321,13 @@ scope:
   resolved_ip_allowlist: ["10.20.0.0/24"]    # checked against the resolved IP on every request
 ```
 
-**2. Check it.** This validates the contract without sending anything to the target:
+**2 · Check it.** This validates the contract without sending anything to the target:
 
 ```bash
 rampart init --scope-file rampart.scope.yaml
 ```
 
-**3. Scan.**
+**3 · Scan.**
 
 ```bash
 rampart test \
@@ -194,11 +340,11 @@ rampart test \
 Open `.rampart/reports/report.html`. That's it.
 
 <details>
-<summary><b>Make it smarter: grey-box and white-box inputs</b></summary>
+<summary><b>Give it more context, find more: grey-box and white-box inputs</b></summary>
 
 <br />
 
-Rampart works black-box with just a URL. Give it more context and it finds more:
+Rampart works black-box with just a URL. Give it more and it finds more:
 
 | Add | Flag | What you get |
 | --- | --- | --- |
@@ -214,24 +360,38 @@ See [`examples/demo_target`](examples/demo_target) for a complete grey-box setup
 
 </details>
 
-## Ways to use Rampart
+### Go deeper with `--deep`
 
-Every surface goes through the same engine and the same safety checks, so a scan from the CLI,
-your code, your CI, or an AI agent produces identical findings.
+Add `--deep` and a *confirmed* finding drives the scan harder, the way an assessor would: the other
+injection classes on a parameter proven to be a live sink, and sibling endpoints that return an
+object type proven to have a broken ownership check.
 
-| | Use it when |
-| --- | --- |
-| [**CLI**](#cli) | you're running scans by hand or in a script |
-| [**Python SDK**](#python-sdk) | you want scans inside tests, notebooks, or your own tooling |
-| [**GitHub Action**](#github-actions) | you want a security gate and PR comments on every pull request |
-| [**GitLab CI**](#gitlab-ci) | your pipelines live in GitLab |
-| [**Docker**](#docker) | you don't want Python on the host, or you're running in Kubernetes/CI runners |
-| [**MCP server**](#claude-code-cursor-and-other-mcp-clients) | you want Claude Code, Cursor, or another agent to run scoped scans for you |
-| [**Dashboard**](#local-dashboard) | you want to browse runs and findings in a browser |
+```bash
+rampart pipeline --target … --scope-file … --deep     # the full, result-driven deep scan
+```
 
-### CLI
+- **Proven, never noisier.** Every follow-up is re-proven by the same independent oracle, so
+  `--deep` can only add *proven* findings.
+- **Can't run away.** The fan-out is deterministic and hard-capped (depth, total, and per-finding),
+  with duplicates removed, and the counts admitted and dropped are in the report.
+- **Honest on the demo.** Its 21 follow-ups were all re-tested and correctly dropped (the demo's
+  other parameters aren't vulnerable), and 27 more were cut by the caps.
 
-Run everything with `test`, or run one capability on its own:
+> [!NOTE]
+> `--deep` is on `main` and not in the v1.2.0 release yet. Until the next release, install from
+> source (`pip install -e .` in a clone) or `pipx install git+https://github.com/NitinReddy-A/Rampart.git`.
+
+## Use it anywhere
+
+Every surface goes through the same engine and the same safety checks, so a scan from the CLI, your
+code, your CI, or an AI agent produces identical findings. Open the one you need:
+
+<details>
+<summary><b>⌨️ CLI</b>: running scans by hand or in a script</summary>
+
+<br />
+
+Run everything with `test`, or one capability on its own:
 
 ```bash
 rampart test     --target … --scope-file …   # the full assessment (start here)
@@ -249,23 +409,6 @@ rampart features                             # list every capability and how to 
 
 `sast`, `sca`, and `iac` still require a valid scope contract, but never send a request.
 
-**Go deeper on what it finds.** Add `--deep` and a *confirmed* finding drives the scan harder,
-the way an assessor would: the other injection classes on a parameter proven to be a live sink,
-sibling endpoints that return an object type proven to have a broken ownership check. Every
-follow-up is re-proven by the same independent oracle, so `--deep` can only add *proven*
-findings, never noise. The fan-out is deterministic and hard-capped (depth, total, and
-per-finding), with duplicates removed, so it can't run away — the counts admitted and dropped are
-in the report. On the bundled demo app its 21 follow-ups were all re-tested and correctly dropped
-(the demo's other parameters aren't vulnerable), and 27 more were cut by the caps.
-
-```bash
-rampart pipeline --target … --scope-file … --deep     # the full, result-driven deep scan
-```
-
-> [!NOTE]
-> `--deep` is on `main` and not in the v1.2.0 release yet. Until the next release, install from
-> source (`pip install -e .` in a clone) or `pipx install git+https://github.com/NitinReddy-A/Rampart.git`.
-
 **In CI**, gate the build with `--ci --fail-on high` (confirmed runtime findings) and, optionally,
 `--fail-on-static high` (source, dependency, and IaC findings, which are evidence-backed but not
 exploit-proven). Exit codes are stable:
@@ -279,7 +422,12 @@ exploit-proven). Exit codes are stable:
 A scan that couldn't actually test anything always exits `2`, so it can never pass a gate by
 accident.
 
-### Python SDK
+</details>
+
+<details>
+<summary><b>🐍 Python SDK</b>: scans inside tests, notebooks, or your own tooling</summary>
+
+<br />
 
 ```python
 from rampart import Rampart
@@ -309,7 +457,12 @@ def test_staging_has_no_high_severity_vulnerabilities():
 
 Full API: [docs/SDK.md](docs/SDK.md).
 
-### GitHub Actions
+</details>
+
+<details>
+<summary><b>✅ GitHub Action</b>: a security gate and a findings comment on every pull request</summary>
+
+<br />
 
 ```yaml
 # .github/workflows/security.yml
@@ -356,13 +509,17 @@ jobs:
 | `comment-pr` | `false` | Post or update one summary comment on the PR |
 | `work-dir` | `.rampart` | Where the audit log, evidence, and reports go |
 
-`@v1` tracks the latest 1.x release. Pin to an exact tag such as `@v1.2.0`, or a full commit SHA, for fully reproducible builds.
-Inputs reach the shell only through environment variables, so a value can't inject commands.
+`@v1` tracks the latest 1.x release. Pin to an exact tag such as `@v1.2.0`, or a full commit SHA, for
+fully reproducible builds. Inputs reach the shell only through environment variables, so a value
+can't inject commands. The job fails (exit 2) if the target is unreachable or every request was
+blocked by your scope, so a broken deploy can never pass the security check by accident.
 
-The job fails (exit 2) if the target is unreachable or every request was blocked by your scope,
-so a broken deploy can never pass the security check by accident.
+</details>
 
-### GitLab CI
+<details>
+<summary><b>🦊 GitLab CI</b>: your pipelines live in GitLab</summary>
+
+<br />
 
 ```yaml
 rampart:
@@ -378,7 +535,12 @@ rampart:
 
 A fuller template is in [`.gitlab-ci.yml`](.gitlab-ci.yml).
 
-### Docker
+</details>
+
+<details>
+<summary><b>🐳 Docker</b>: no Python on the host, or Kubernetes and CI runners</summary>
+
+<br />
 
 ```bash
 docker run --rm \
@@ -393,7 +555,12 @@ The image is multi-arch (`amd64`, `arm64`), runs as a non-root user, and is tagg
 `host.docker.internal` on macOS and Windows. See [`docker-compose.yml`](docker-compose.yml) for a
 ready-made setup.
 
-### Claude Code, Cursor, and other MCP clients
+</details>
+
+<details>
+<summary><b>🤖 MCP server</b>: Claude Code, Cursor, or another agent runs scoped scans for you</summary>
+
+<br />
 
 Rampart ships an [MCP](https://modelcontextprotocol.io) server, so an AI agent can validate scope,
 run scans, and read reports, always inside your scope contract.
@@ -415,113 +582,18 @@ For Cursor, Claude Desktop, or any other MCP client, add this to its MCP config:
 Then just ask: *"Check my scope file, scan http://127.0.0.1:8080, and summarize the confirmed
 findings."* Tools and details: [docs/MCP.md](docs/MCP.md).
 
-### Local dashboard
+</details>
+
+<details>
+<summary><b>📊 Local dashboard</b>: browse runs and findings in a browser</summary>
+
+<br />
 
 ```bash
 rampart serve --work-dir .rampart      # http://127.0.0.1:8787, zero dependencies
 ```
 
-## What it tests
-
-Most runtime classes below have an independent oracle — a probe, a negative control, and 2+
-reproductions from a clean state — before anything is called *confirmed*. Two honest exceptions:
-the out-of-band blind SSRF/XXE and the gRPC server-reflection checks confirm on one reproduction
-plus a negative control (reflection is a single deterministic observation), and the built-in
-misconfiguration, security-header, and sensitive-file checks are single authoritative observations
-re-checked on a second request (the observation is itself the oracle). The per-class evidence tier
-is spelled out in [docs/COVERAGE.md](docs/COVERAGE.md). The built-in checks need no external tools.
-
-| Area | Checks | Turn on with |
-| --- | --- | --- |
-| **Web & API** | IDOR/BOLA, broken function-level authz, SQL injection, XSS, SSTI, SSRF, OS command injection, path traversal, open redirect, host-header injection, JWT `alg=none`, excessive data exposure, mass assignment, GraphQL introspection | default (`--active` for write probes) |
-| **Misconfiguration** | security headers, permissive CORS, cookie flags, clickjacking, exposed files (`.env`, `.git`, backups), version disclosure | default |
-| **Deep auth** | weak JWT signing secrets, expiry not enforced | `--authz` |
-| **API depth** | HTTP verb tampering, GraphQL depth abuse | `--api-scan` |
-| **Business logic** | price, quantity, and parameter tampering | `--bizlogic` |
-| **Blind bugs** | blind SSRF and XXE via a self-hosted out-of-band collaborator | `--oob` |
-| **Browser** | JS/SPA route discovery (DOM + fetch/XHR), DOM and stored XSS in real headless Chromium | `--browser` |
-| **gRPC** | reflection exposure, plaintext transport, unauthenticated RPCs | `--grpc` |
-| **Infrastructure** | exposed services on in-scope hosts | `--infra` |
-| **Source code** | Python AST source scanner, hard-coded secrets | `--repo` |
-| **Infrastructure as code** | Terraform, CloudFormation, Kubernetes, Dockerfile | `--iac` |
-| **Dependencies (SCA)** | OSV.dev matches, ranked by EPSS, CISA KEV, and call-graph reachability | `--sca-online` |
-| **LLM apps** | OWASP LLM Top 10 probes — 4 of the risk categories: LLM01 prompt injection + jailbreak, LLM05 improper output handling, LLM07/LLM02 system-prompt & sensitive-info leakage | `rampart llm-test` |
-| **External tools** | Nuclei, Nmap, Semgrep, Trivy, testssl.sh, imported as *unvalidated leads* | `--scanners` |
-
-Run `rampart tools` to see which external scanners are installed.
-
-## How it works
-
-Point Rampart at an app you're allowed to test. It maps the surface, forms a hypothesis for every
-place a bug could hide, and then has to **prove** each one from a clean state before it earns a line
-in the report. Scope goes in; a proven report comes out.
-
-<div align="center">
-<img src="docs/assets/iso-flow.svg" alt="Isometric view of the scan: a scope block, then the app model, then the one amber admission gate every request crosses, then the prove stage (an unproven candidate is dropped, a reproved one is confirmed), then the report" width="880" />
-<br />
-<sub>Each stage is gated. The amber <b>gate</b> is the single admission choke-point every request crosses, and only the <b>prove</b> stage — an independent oracle — may mark a finding <b>confirmed</b>. What it can't reprove is dropped.</sub>
-</div>
-
-<br />
-
-The same flow with its exact fail-closed semantics:
-
-```mermaid
-flowchart TD
-    S([rampart.scope.yaml]):::doc --> G{Authorization gate}:::gate
-    G -- invalid / out of scope --> X([Refuse to run]):::stop
-    G -- valid --> M[Build the app model]:::step
-    M --> H[Generate hypotheses]:::step
-    H --> P{{Policy pipeline}}:::choke
-    P -- denied --> B([Blocked &amp; audited]):::stop
-    P -- allowed --> T[(Your target)]:::target
-    T --> O{Independent oracle}:::gate
-    O -- re-proven --> C([Confirmed finding]):::good
-    O -- not re-proven --> D([Dropped]):::drop
-    C -->|"with --deep"| H
-    C --> R[Correlate, score, report]:::step
-
-    classDef doc stroke:#94a3b8,stroke-width:1.5px
-    classDef step stroke:#3b82f6,stroke-width:1.5px
-    classDef gate stroke:#eab308,stroke-width:2px
-    classDef choke stroke:#ef4444,stroke-width:3px
-    classDef target stroke:#38bdf8,stroke-width:2px
-    classDef good stroke:#22c55e,stroke-width:2px
-    classDef drop stroke:#78716c,stroke-width:1.5px,stroke-dasharray:5 3
-    classDef stop stroke:#ef4444,stroke-width:1.5px,stroke-dasharray:5 3
-```
-
-<sub>Amber diamonds are decision gates · the red hexagon is the **one admission choke-point** every
-request passes (scope · resolved-IP · risk tier · budget · audit) · dashed red = fail-closed ·
-green = oracle-proven · the `--deep` arrow is finding-driven escalation. Full detail:
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).</sub>
-
-Two rules make the results trustworthy:
-
-1. **One admission contract, enforced at every egress point.** Every HTTP probe goes through one
-   choke-point — the policy pipeline (`rampart/policy/pipeline.py`): scope, resolved-IP allowlist,
-   risk tier, policy, and budget are checked on each request, fail-closed. The side engines that open
-   their own connections (headless browser, gRPC, infra) don't route around that contract: each
-   resolves and scope-checks its target against the same scope + resolved-IP allowlist itself, and
-   sends every connection through a shared admission guard (`rampart/infra/sidechannel.py`) that
-   applies the same budget, kill-switch, and tamper-evident audit — also fail-closed. No agent,
-   scanner, or LLM output can route around it; a prompt-injected model can at most propose requests
-   the policy engine rejects.
-2. **Nothing is "confirmed" without independent proof.** The oracle that confirms a finding is
-   deterministic code, never an LLM, and it re-derives the result from scratch with a negative
-   control. LLM-reasoned issues that can't be proven are labelled `agent-assessed`.
-
-## Architecture at a glance
-
-Rampart is built in layers. Every way of running it — the CLI, the Python SDK, the MCP server, the
-GitHub Action — enters through **one engagement** and produces identical results, and every layer
-rests on a **safety core** that no scanner, agent, or model output can route around.
-
-<div align="center">
-<img src="docs/assets/iso-layers.svg" alt="Isometric stack of Rampart's layers: surfaces on top, then the engagement facade, discover and confirm, the checks, reason and report, all resting on the safety core at the bottom, with every request passing down into that core" width="560" />
-<br />
-<sub>Surfaces call one façade; the checks and reporting sit above the load-bearing safety core (scope, policy pipeline, audit, evidence, executor). Full map: <a href="docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a>.</sub>
-</div>
+</details>
 
 ## Bring your own LLM (optional)
 
@@ -543,6 +615,28 @@ rampart test --intel openai-compat --agents --scope-file rampart.scope.yaml --ta
 
 Keys are read from the environment, never from command-line flags. Model suggestions:
 [docs/LLM_AND_API_KEYS.md](docs/LLM_AND_API_KEYS.md).
+
+## Safety model
+
+<div align="center">
+<img src="docs/assets/iso-choke.svg" alt="Isometric view: the crawler, oracles, logins, and the browser, gRPC and infra engines all converge through one admission gate before reaching the target; an out-of-scope request bounces off the gate" width="560" />
+<br />
+<sub>One gate, no side doors. An out-of-scope request bounces off.</sub>
+</div>
+
+<br />
+
+| | |
+| --- | --- |
+| **Authorization gate** | No valid, unexpired, in-scope `rampart.scope.yaml` with an accountable owner means no run. |
+| **One admission contract on every egress** | HTTP requests (crawler, oracles, test-account logins) are checked against the scope's host, port, and canonicalised path, and the *resolved* IP to stop DNS rebinding. The browser, gRPC, and infra engines enforce the same scope and resolved-IP allowlist and share one admission guard for budget, kill switch, and audit. All fail-closed. |
+| **Fail-closed scope parsing** | The built-in YAML parser rejects anything it doesn't fully understand instead of guessing, so a typo can't silently widen your scope. |
+| **LLM containment, tested** | A regression test drives the agent layer with a model that tries other hosts, ports, excluded paths, cloud metadata, and `file://` URLs, and asserts nothing out of scope is ever contacted. |
+| **Non-destructive by default** | Write probes need `--active`; state changes beyond that need human approval; destructive actions and denial of service are always denied. |
+| **Tamper-evident audit log** | Append-only, hash-chained, and anchored; `rampart verify-audit` detects edits, deletions, reordering, and truncation. |
+| **Target output is data** | Never instructions, which prevents indirect prompt injection. |
+| **Budgets and a kill switch** | Request rate, total requests, and LLM spend are capped. |
+| **Advisory fixes only** | Patch suggestions are written as files; Rampart never applies or merges them. |
 
 ## Reports and compliance
 
@@ -589,25 +683,6 @@ A separate weekly job scores Rampart against the external
 > a claim about every application. Known gaps on other targets are listed under
 > [Limitations](#limitations), and we track them openly.
 
-## Safety model
-
-<div align="center">
-<img src="docs/assets/iso-choke.svg" alt="Isometric view: the crawler, oracles, logins, and the browser, gRPC and infra engines all converge through one admission gate before reaching the target; an out-of-scope request bounces off the gate" width="560" />
-<br />
-<sub>One gate, no side doors. Every engine reaches your target through the same admission contract — scope, resolved-IP, risk tier, budget, audit — fail-closed. An out-of-scope request bounces off.</sub>
-</div>
-
-- **Authorization gate.** No valid, unexpired, in-scope `rampart.scope.yaml` with an accountable owner means no run.
-- **One admission contract on every egress.** HTTP requests (crawler, oracles, test-account logins) are checked against the scope's host, port, and canonicalised path, and the *resolved* IP to stop DNS rebinding, by the policy pipeline. The headless browser, gRPC, and infra engines open their own connections but enforce that same scope + *resolved*-IP allowlist themselves and route every connection through a shared admission guard (`rampart/infra/sidechannel.py`) that applies the same budget, kill-switch, and tamper-evident audit — all fail-closed.
-- **Fail-closed scope parsing.** The built-in YAML parser rejects anything it doesn't fully understand instead of guessing, so a typo can't silently widen your scope.
-- **LLM containment is tested.** A regression test drives the agent layer with a model that tries to reach other hosts, ports, excluded paths, cloud metadata, and `file://` URLs, and asserts that nothing out of scope is ever contacted.
-- **Non-destructive by default.** Write probes need `--active`; state changes beyond that need human approval; destructive actions and denial of service are always denied.
-- **Independent validation** before anything is marked confirmed.
-- **Tamper-evident audit log.** Append-only, hash-chained, and anchored; `rampart verify-audit` detects edits, deletions, reordering, and truncation.
-- **Target output is data, never instructions.** Prevents indirect prompt injection.
-- **Budgets and a kill switch** cap request rate, total requests, and LLM spend.
-- **Advisory fixes only.** Patch suggestions are written as files; Rampart never applies or merges them.
-
 ## FAQ
 
 <details>
@@ -624,8 +699,7 @@ security scanner against systems without permission is illegal in most countries
 Not by default. Rampart's default mode makes no external calls besides the requests to your
 in-scope target. Two features are opt-in: <code>--sca-online</code> sends dependency names and
 versions to OSV.dev and fetches public EPSS and CISA KEV data, and an LLM provider receives prompts
-if you configure one. Use Ollama to keep
-LLM reasoning local too.
+if you configure one. Use Ollama to keep LLM reasoning local too.
 </details>
 
 <details>
@@ -685,7 +759,7 @@ for a human pentest.
 | [MCP / Claude Code](docs/MCP.md) | let an AI agent run scoped scans |
 | [LLMs and API keys](docs/LLM_AND_API_KEYS.md) | providers, models, free options |
 | [LLM security testing](docs/LLM_SECURITY_TESTING.md) | the 4 OWASP LLM Top 10 categories `llm-test` covers (LLM01/05/07/02) |
-| [Coverage manifest](docs/COVERAGE.md) | exactly what Rampart does, by evidence tier — the single source of truth |
+| [Coverage manifest](docs/COVERAGE.md) | exactly what Rampart does, by evidence tier: the single source of truth |
 | [Notifications](docs/NOTIFICATIONS.md) | post confirmed findings to a signed webhook or Slack |
 | [External tools](docs/EXTERNAL_TOOLS.md) | optional Nuclei/Semgrep/Trivy/… adapters (unvalidated leads) |
 | [Architecture](docs/ARCHITECTURE.md) | how the code is organized |
@@ -694,7 +768,7 @@ for a human pentest.
 
 ## Contributing
 
-Contributions are welcome: new checks, integrations, docs, and bug reports. Start with
+New checks, integrations, docs, and bug reports are all welcome. Start with
 [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the rules that keep findings trustworthy.
 
 ```bash
@@ -706,11 +780,34 @@ make check          # lint, format, tests, and the benchmark, exactly as CI runs
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Found a vulnerability
 *in Rampart itself*? Please report it privately via [SECURITY.md](SECURITY.md).
 
+## Contributors
+
+Thanks to everyone who has made Rampart better.
+
+<table>
+  <tr>
+    <td align="center" width="140" valign="top">
+      <a href="https://github.com/NitinReddy-A"><img src="https://avatars.githubusercontent.com/u/114919978?v=4&s=160" width="80" alt="Nitin" /><br /><b>Nitin</b></a><br />
+      <sub>@NitinReddy-A</sub><br />
+      <sub>Creator &amp; maintainer</sub>
+    </td>
+    <td align="center" width="140" valign="top">
+      <a href="https://github.com/pkr2805"><img src="https://avatars.githubusercontent.com/u/137922268?v=4&s=160" width="80" alt="Priyanshu Kumar" /><br /><b>Priyanshu Kumar</b></a><br />
+      <sub>@pkr2805</sub><br />
+      <sub>Contributor</sub>
+    </td>
+  </tr>
+</table>
+
+Want to see your face here? Pick an [open issue](https://github.com/NitinReddy-A/Rampart/issues)
+or propose a new check.
+
 ## License
 
 [Apache-2.0](LICENSE). GPL/AGPL external scanners are invoked as separate processes, never linked.
 See [NOTICE](NOTICE).
 
 <div align="center">
-<sub>Built by <a href="https://github.com/NitinReddy-A">Nitin</a> and the Rampart contributors. If Rampart saved you time, a ⭐ helps others find it.</sub>
+<br />
+<sub>If Rampart saved you time, a ⭐ helps others find it.</sub>
 </div>
