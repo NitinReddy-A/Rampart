@@ -794,7 +794,7 @@ Thanks to everyone who has made Rampart better.
     <td align="center" width="140" valign="top">
       <a href="https://github.com/pkr2805"><img src="https://avatars.githubusercontent.com/u/137922268?v=4&s=160" width="80" alt="Priyanshu Kumar" /><br /><b>Priyanshu Kumar</b></a><br />
       <sub>@pkr2805</sub><br />
-      <sub>Contributor</sub>
+      <sub>Maintainer</sub>
     </td>
   </tr>
 </table>

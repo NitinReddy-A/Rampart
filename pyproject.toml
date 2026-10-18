@@ -14,7 +14,7 @@ authors = [
   { name = "Nitin", email = "nitin.code2@gmail.com" },
   { name = "Rampart contributors" },
 ]
-maintainers = [{ name = "Nitin", email = "nitin.code2@gmail.com" }]
+maintainers = [{ name = "Nitin", email = "nitin.code2@gmail.com" }, { name = "Priyanshu Kumar" }]
 keywords = [
   "security", "appsec", "pentest", "vapt", "dast", "sast", "sca",
   "bola", "idor", "sarif", "soc2", "authorized-testing", "agent", "llm",
