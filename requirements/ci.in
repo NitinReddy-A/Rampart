@@ -2,5 +2,5 @@
 # installs with `pip install --require-hashes`. setuptools is the build backend, pinned here so
 # `pip install --no-deps --no-build-isolation -e .` never fetches an unpinned one.
 pytest
-ruff==0.16.10
+ruff==0.17.0
 setuptools>=77
