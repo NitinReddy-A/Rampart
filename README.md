@@ -9,6 +9,7 @@
 The open-source, self-hosted security agent for web apps, APIs, and LLM endpoints.<br />
 It reports only the vulnerabilities it can **prove**, each with the evidence to reproduce it.
 
+[![Website](docs/assets/badges/website.svg)](https://rampart.dpdns.org)
 [![CI](https://github.com/NitinReddy-A/Rampart/actions/workflows/ci.yml/badge.svg)](https://github.com/NitinReddy-A/Rampart/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/NitinReddy-A/Rampart/actions/workflows/codeql.yml/badge.svg)](https://github.com/NitinReddy-A/Rampart/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://raw.githubusercontent.com/NitinReddy-A/Rampart/badges/scorecard.svg)](https://scorecard.dev/viewer/?uri=github.com/NitinReddy-A/Rampart)
@@ -19,6 +20,7 @@ It reports only the vulnerabilities it can **prove**, each with the evidence to 
 [![Benchmark](docs/assets/badges/benchmark.svg)](#benchmark)
 [![License](docs/assets/badges/license.svg)](LICENSE)
 
+**[Website](https://rampart.dpdns.org)** ·
 **[Try it in 60 seconds](#try-it-in-60-seconds)** ·
 [How it works](#how-it-works) ·
 [What it tests](#what-it-tests) ·
