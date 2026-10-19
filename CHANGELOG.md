@@ -127,6 +127,8 @@ All notable changes to Rampart are documented here. The format follows
   control and dropped, instead of being reported as an exposed file.
 
 ### Changed
+- **Project website.** [rampart.dpdns.org](https://rampart.dpdns.org) is linked from the README
+  (a website badge and the top links) and set as the repository homepage.
 - **New logo and README hero.** The logo is the top of a tower, four merlons on a wall, drawn
   isometrically in blue and green on a dark tile, so it reads on light and dark themes. The README opens on a terminal window showing the unedited output of
   `rampart test --repo . --deep` against the demo app, scrolled to the results (22 confirmed, 66
