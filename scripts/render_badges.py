@@ -70,7 +70,6 @@ def _get_json(url: str, token: str = "") -> dict:
 STATIC = {
     "python.svg": ("python", "3.10 – 3.13", "#3776AB"),
     "runtime-deps.svg": ("runtime deps", "0", "#2EA44F"),
-    "benchmark.svg": ("benchmark", "100% precision · 100% recall", "#2EA44F"),
     "license.svg": ("license", "Apache-2.0", "#007EC6"),
     "website.svg": ("website", "rampart.dpdns.org", "#0284C7"),
 }

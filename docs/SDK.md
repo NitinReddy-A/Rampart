@@ -21,8 +21,7 @@ r = Rampart(
 result = r.scan()
 
 print(result.summary())
-# against the bundled demo app with its spec, seed and test accounts (secrets="secrets.json"):
-# -> "22 confirmed (3 critical, 9 high, 9 medium, 1 low), 45 dropped by the false-positive gate"
+# e.g. "<n> confirmed (<n> critical, <n> high, ...), <n> dropped by the false-positive gate"
 
 for f in result.confirmed:
     print(f.severity, f.title)

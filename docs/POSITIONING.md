@@ -63,9 +63,9 @@ Two invariants, enforced in code, not prompts:
   dashboard.
 - Reports: HTML, Markdown, JSON, SARIF (GitHub code scanning), compliance mapping across 8
   frameworks, SOC 2 evidence.
-- **Its own reproducible benchmark**: 15/0/0 (100% precision and recall) on the shipped
-  vulnerable/fixed corpus, gated in CI, plus a weekly run against OWASP VAmPI and Juice Shop fixtures.
-- A test suite of 750+ tests, including the A1–A8 acceptance suite, and coverage-guided fuzzing of
+- **Its own reproducible benchmark** on the shipped vulnerable/fixed corpus, gated in CI, plus a
+  weekly run against OWASP VAmPI and Juice Shop fixtures.
+- A full test suite, including the A1–A8 acceptance suite, and coverage-guided fuzzing of
   the scope parser and gate matchers.
 
 BOLA/IDOR was built end-to-end first: broken object-level authorization is the leading risk in

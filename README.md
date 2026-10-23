@@ -17,7 +17,6 @@ It reports only the vulnerabilities it can **prove**, each with the evidence to 
 [![Release](https://raw.githubusercontent.com/NitinReddy-A/Rampart/badges/release.svg)](https://github.com/NitinReddy-A/Rampart/releases/latest)
 [![Python](docs/assets/badges/python.svg)](pyproject.toml)
 [![Runtime deps](docs/assets/badges/runtime-deps.svg)](pyproject.toml)
-[![Benchmark](docs/assets/badges/benchmark.svg)](#benchmark)
 [![License](docs/assets/badges/license.svg)](LICENSE)
 
 **[Website](https://rampart.dpdns.org)** ·
@@ -29,9 +28,9 @@ It reports only the vulnerabilities it can **prove**, each with the evidence to 
 [FAQ](#faq) ·
 [Docs](#documentation)
 
-<img src="docs/assets/rampart-console.svg" alt="Terminal output of rampart test against the bundled demo app, scrolled to the results: 22 findings confirmed with reproducible proof, each candidate the independent validator could not reproduce listed as dropped (66 in all), then the confirmed CRITICAL and HIGH findings" width="900" />
+<img src="docs/assets/rampart-console.svg" alt="Example terminal output of rampart test against the bundled demo app, scrolled to the results: findings confirmed with reproducible proof, each candidate the independent validator could not reproduce listed as dropped, then the confirmed CRITICAL and HIGH findings" width="900" />
 
-<sub>Unedited output of <code>rampart test --repo . --deep</code> against the bundled demo app, scrolled to the results. <code>--deep</code> is on <code>main</code> and not yet in the v1.2.0 release.</sub>
+<sub>Example: unedited output of <code>rampart test --repo . --deep</code> against the bundled demo app, scrolled to the results. Counts depend on the target. <code>--deep</code> is on <code>main</code> and not yet in the v1.2.0 release.</sub>
 
 </div>
 
@@ -96,10 +95,9 @@ The demo starts the target, runs a full assessment, and opens an HTML report:
   audit chain: intact · 476 events · cost $0.0
 ```
 
-**22 confirmed findings, 45 candidates dropped, 7 multi-step attack chains.** The **Dropped** rows
-are the point: broad enumeration also guessed SQLi on `q` and XSS on `id`, the oracle couldn't
-reproduce them, so they're discarded. Run `python scripts/demo.py --fixed` against the patched
-build and Rampart confirms nothing at all.
+The **Dropped** rows are the point: broad enumeration also guessed SQLi on `q` and XSS on `id`,
+the oracle couldn't reproduce them, so they're discarded. Run `python scripts/demo.py --fixed`
+against the patched build and Rampart confirms nothing at all.
 
 ## Why Rampart
 
@@ -125,7 +123,7 @@ targets go to a vendor. Rampart takes the third path.
 | --- | --- |
 | **Developers** | a security gate in CI that doesn't cry wolf |
 | **AppSec teams** | evidence, not a 400-row spreadsheet of "possible" issues |
-| **Pentesters** | the repetitive 80% automated and audited, so you can spend time on the hard 20% |
+| **Pentesters** | the repetitive checks automated and audited, so you can spend time on the hard parts |
 | **Audit prep** | control evidence for SOC 2, ISO 27001, PCI DSS and five more frameworks, mapped to findings |
 
 ## How it works
@@ -441,8 +439,7 @@ result = Rampart(
 ).scan()
 
 print(result.summary())
-# on the bundled demo app (grey-box, with its seed and test accounts):
-# "22 confirmed (3 critical, 9 high, 9 medium, 1 low), 45 dropped by the false-positive gate"
+# e.g. "<n> confirmed (<n> critical, <n> high, ...), <n> dropped by the false-positive gate"
 for finding in result.confirmed:
     print(finding.severity, finding.title)
 
@@ -643,7 +640,9 @@ Keys are read from the environment, never from command-line flags. Model suggest
 ## Reports and compliance
 
 <p align="center">
-  <img src="docs/assets/report-preview.png" alt="Rampart HTML report: 22 confirmed findings, 45 false positives dropped, $0 LLM cost" width="820" />
+  <img src="docs/assets/report-preview.png" alt="Example Rampart HTML report from a scan of the bundled demo app" width="820" />
+  <br />
+  <sub>Example report from a scan of the bundled demo app.</sub>
 </p>
 
 Choose any combination with `--report`:
@@ -673,16 +672,12 @@ It scans the demo target in **vulnerable** and **fixed** modes and scores confir
 against ground truth. CI runs it on every push and fails the build on any false positive or false
 negative.
 
-| True positives | False positives | False negatives | Precision | Recall | Cost |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| 15 | 0 | 0 | 100% | 100% | $0 |
-
 A separate weekly job scores Rampart against the external
 [OWASP VAmPI](https://github.com/erev0s/VAmPI) corpus ([`corpus.yml`](.github/workflows/corpus.yml)).
 
 > [!NOTE]
-> The benchmark target ships with Rampart, so a perfect score there is a regression guarantee, not
-> a claim about every application. Known gaps on other targets are listed under
+> The benchmark target ships with Rampart, so passing it is a regression guarantee, not a claim
+> about every application. Known gaps on other targets are listed under
 > [Limitations](#limitations), and we track them openly.
 
 ## FAQ

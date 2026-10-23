@@ -1,9 +1,9 @@
 # Benchmarking Rampart against external vulnerable apps
 
 Rampart ships a built-in, offline benchmark (`python benchmarks/run_benchmark.py`) against its own
-on/off demo target — the clean way to measure precision/recall (100% on the shipped corpus, both
-vulnerable and fixed). To validate against the community's standard intentionally-vulnerable apps,
-point Rampart at them locally. These are **not bundled** (they require Docker/Node and carry their
+on/off demo target — the clean way to measure precision/recall on both the vulnerable and fixed
+builds. To validate against the community's standard intentionally-vulnerable apps, point Rampart
+at them locally. These are **not bundled** (they require Docker/Node and carry their
 own licenses); run them yourself on an isolated host you own.
 
 > Only ever test these on localhost / an isolated lab you control, with a matching `rampart.scope.yaml`
