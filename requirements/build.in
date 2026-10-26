@@ -2,4 +2,4 @@
 # source). `make lock` compiles this into the hash-pinned build.txt. Builds run with
 # --no-isolation / --no-build-isolation so the pinned setuptools is the backend actually used.
 build
-setuptools>=77
+setuptools>=84.1.0

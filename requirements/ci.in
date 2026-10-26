@@ -3,4 +3,4 @@
 # `pip install --no-deps --no-build-isolation -e .` never fetches an unpinned one.
 pytest
 ruff==0.17.0
-setuptools>=77
+setuptools>=84.1.0
