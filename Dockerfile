@@ -4,7 +4,7 @@
 # resolve); Dependabot's docker ecosystem keeps the digest current.
 
 # ---- Stage 1: build a wheel from the source ----
-FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913 AS build
+FROM python:3.15-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928 AS build
 WORKDIR /src
 # Build tooling is hash-pinned, and the build runs without isolation so the pinned setuptools is
 # the backend actually used (an isolated build would fetch an unpinned one).
@@ -14,7 +14,7 @@ COPY . .
 RUN python -m build --wheel --no-isolation --outdir /dist
 
 # ---- Stage 2: tiny runtime image ----
-FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913 AS runtime
+FROM python:3.15-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928 AS runtime
 
 # Rampart's core has ZERO runtime dependencies (stdlib only), so the image
 # stays small. Install only the built wheel — --no-deps, so nothing is fetched from an index.
